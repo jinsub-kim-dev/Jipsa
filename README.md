@@ -93,6 +93,8 @@ cd frontend && npm run check
 | `POST /api/fixed-expenses/{id}/terminate` | 고정비 종료 |
 | `POST /api/fixed-expenses/records?month=` | 그 달 고정비 기록(멱등) |
 | `GET /api/installment-plans?month=` · `POST` · `DELETE /{id}` | 할부 목록(진행 상황 포함) · 등록 · 해지 |
+| `POST /api/card-statements` (multipart `file`) | 카드 이용내역 엑셀 가져오기. 카드사는 파일을 보고 알아낸다. 이미 있는 것은 무시한다 |
+| `POST /api/card-statements/{samsung\|woori}` | 카드사를 정해서 가져오기 |
 | `GET /api/statistics/monthly-summary?month=` | 월 요약과 전월 대비 |
 | `GET /api/statistics/kind-trend?from=&to=` | 종류별 추이 |
 | `GET /api/statistics/category-trend?from=&to=&targetMonth=` | 카테고리 × 월 |

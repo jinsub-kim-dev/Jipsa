@@ -4,6 +4,7 @@ import com.example.jipsa.domain.exception.DomainStateException
 import com.example.jipsa.domain.exception.InvariantViolationException
 import com.example.jipsa.domain.exception.ResourceNotFoundException
 import com.example.jipsa.presentation.dto.ErrorResponse
+import com.example.jipsa.presentation.statement.CardStatementFormatException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -47,6 +48,14 @@ class ApiExceptionHandler {
         log.debug("상태 충돌: {}", e.message)
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(ErrorResponse(code = "DOMAIN_STATE_CONFLICT", message = e.message ?: "처리할 수 없는 상태입니다."))
+    }
+
+    /** 카드 이용내역 파일을 읽을 수 없다. 어느 행이 왜 문제인지 메시지에 담는다. */
+    @ExceptionHandler(CardStatementFormatException::class)
+    fun handleCardStatementFormat(e: CardStatementFormatException): ResponseEntity<ErrorResponse> {
+        log.debug("카드 이용내역 형식 오류: {}", e.message)
+        return ResponseEntity.badRequest()
+            .body(ErrorResponse(code = "INVALID_CARD_STATEMENT", message = e.message ?: "카드 이용내역을 읽을 수 없습니다."))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

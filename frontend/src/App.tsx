@@ -20,6 +20,9 @@ const TransactionsPage = lazy(() =>
 const RecurringPage = lazy(() =>
   import('@/pages/RecurringPage').then((module) => ({ default: module.RecurringPage })),
 )
+const CardImportPage = lazy(() =>
+  import('@/pages/CardImportPage').then((module) => ({ default: module.CardImportPage })),
+)
 
 export function App() {
   // QueryClient 는 렌더마다 새로 만들면 캐시가 초기화되므로 상태로 한 번만 만든다.
@@ -58,6 +61,14 @@ export function App() {
             element={
               <PageBoundary>
                 <RecurringPage />
+              </PageBoundary>
+            }
+          />
+          <Route
+            path="imports"
+            element={
+              <PageBoundary>
+                <CardImportPage />
               </PageBoundary>
             }
           />

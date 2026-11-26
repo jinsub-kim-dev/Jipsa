@@ -120,6 +120,13 @@ com.example.jipsa
   - `CommitmentForecaster`: 고정비 + 할부 → 앞으로 n개월의 약정 지출
   - `CategoryTrendAnalyzer`: 카테고리별 월 합계 → 빈 칸 채움, 전월 대비 증감률, 정렬 확정
   - `SpendingInsightAnalyzer`: 월별 합계 → 직전 3개월 평균 대비, 가장 늘어난 카테고리, 약정 비중
+  - `CardStatementImporter`: 카드 이용내역 + 기존 거래·할부 → 새로 만들 거래·할부 계획 (내용 비교로 중복 제외)
+  - `MerchantCategoryClassifier`: 사용처 → 분류 규칙의 카테고리 이름 (규칙 순서대로, 없으면 미분류)
+- 카드 이용내역 **파일 형식**(엑셀 열 이름)은 도메인이 모른다. `presentation/statement` 의 읽기 어댑터가
+  해석해 `CardStatement` 로 넘긴다. 인프라는 다른 레이어가 참조할 수 없으므로(ArchUnit) 입력 어댑터는 프레젠테이션에 둔다.
+  - `StatementDocument`: 엑셀(xls·xlsx)과 HTML 표를 같은 "표" 로 연다. 확장자가 아니라 **내용**(파일 서명·`<table>`)으로 판단한다
+  - `TabularCardStatementReader`: 머리글 찾기, 줄 단위 실패 수집. 카드사별 리더(삼성·우리·현대)는 열 이름과 한 줄 해석만 갖는다
+  - `CardStatementFileReader`: 머리글을 보고 카드사를 고른다. 카드사를 추가하면 리더 빈 하나만 늘리면 된다
 - 할부 회차 생성(`InstallmentPlan.scheduleParts`)과 고정비 한 달 분(`FixedExpense.occurrenceIn`)은
   각 애그리거트의 팩토리 메서드가 담당합니다. 둘 다 한 애그리거트의 정보만으로 결정되기 때문입니다.
 - **판정 기준값(임계치)은 도메인 서비스가 갖고, 응답에 함께 담아 화면이 설명할 수 있게 합니다.**

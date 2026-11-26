@@ -1,4 +1,13 @@
-import { CalendarDays, LayoutDashboard, Plus, Receipt, Repeat, Settings, Tags } from 'lucide-react'
+import {
+  CalendarDays,
+  FileUp,
+  LayoutDashboard,
+  Plus,
+  Receipt,
+  Repeat,
+  Settings,
+  Tags,
+} from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { APP_ENVIRONMENT, IS_DEV_ENVIRONMENT } from '@/config/env'
@@ -12,6 +21,7 @@ const NAV_ITEMS = [
   { to: '/calendar', label: '캘린더', icon: CalendarDays },
   { to: '/transactions', label: '거래 내역', icon: Receipt },
   { to: '/recurring', label: '고정비·할부', icon: Repeat },
+  { to: '/imports', label: '카드 내역 가져오기', icon: FileUp },
   { to: '/tags', label: '태그 관리', icon: Tags },
   { to: '/settings', label: '설정', icon: Settings },
 ] as const
@@ -37,7 +47,7 @@ export function AppLayout() {
           )}
         </div>
         <nav className="flex flex-col gap-0.5" aria-label="주요 화면">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }, index) => (
+          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -45,7 +55,8 @@ export function AppLayout() {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
-                  index === 4 && 'mt-3',
+                  // 아직 설계 전인 메뉴(태그 관리·설정)는 한 칸 띄워 구분한다
+                  to === '/tags' && 'mt-3',
                   isActive
                     ? 'bg-sidebar-accent font-semibold text-white'
                     : 'hover:bg-sidebar-accent/60',

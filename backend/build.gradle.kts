@@ -32,6 +32,10 @@ dependencies {
 	// Boot 4 는 자동 구성이 모듈별로 분리되어 있다. flyway-core 만으로는
 	// FlywayAutoConfiguration 이 없어 마이그레이션이 실행되지 않는다.
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	// 카드 이용내역(엑셀) 가져오기 (PRD 3.5). 프레젠테이션의 읽기 어댑터만 쓴다.
+	implementation("org.apache.poi:poi-ooxml:5.4.1")
+	// 확장자만 xls 이고 실제로는 HTML 표인 이용내역(현대카드)을 읽는다.
+	implementation("org.jsoup:jsoup:1.18.3")
 	runtimeOnly("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
 

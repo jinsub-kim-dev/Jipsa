@@ -1,5 +1,7 @@
 package com.example.jipsa.fixture
 
+import com.example.jipsa.domain.model.CardStatement
+import com.example.jipsa.domain.model.CardStatementEntry
 import com.example.jipsa.domain.model.Category
 import com.example.jipsa.domain.model.CategoryId
 import com.example.jipsa.domain.model.FixedExpense
@@ -83,6 +85,7 @@ fun installmentPlan(
     billingDay: Int = 15,
     categoryId: Long = 11L,
     tags: Tags = Tags.of("전자기기"),
+    paymentMethod: String? = "현대카드",
     id: Long? = 1L,
 ): InstallmentPlan {
     val created = InstallmentPlan.create(
@@ -93,7 +96,18 @@ fun installmentPlan(
         firstBillingMonth = firstBillingMonth,
         billingDay = billingDay,
         tags = tags,
-        paymentMethod = "현대카드",
+        paymentMethod = paymentMethod,
     )
     return id?.let { created.assignId(InstallmentPlanId(it)) } ?: created
 }
+
+/** 카드 이용내역 한 줄. 기본값은 일시불 승인이다. */
+fun cardEntry(
+    approvalNumber: String = "10000001",
+    spentDate: LocalDate = LocalDate.of(2026, 11, 10),
+    merchant: String = "OO김밥",
+    amount: Long = 8_000,
+    installmentMonths: Int = 0,
+): CardStatementEntry = CardStatementEntry(approvalNumber, spentDate, merchant, amount, installmentMonths)
+
+fun cardStatement(vararg entries: CardStatementEntry): CardStatement = CardStatement("삼성카드", entries.toList())

@@ -1,8 +1,10 @@
 package com.example.jipsa.config
 
+import com.example.jipsa.domain.service.CardStatementImporter
 import com.example.jipsa.domain.service.CategoryTrendAnalyzer
 import com.example.jipsa.domain.service.CommitmentForecaster
 import com.example.jipsa.domain.service.FixedExpenseRecorder
+import com.example.jipsa.domain.service.MerchantCategoryClassifier
 import com.example.jipsa.domain.service.SpendingInsightAnalyzer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -33,4 +35,7 @@ class DomainServiceConfiguration {
 
     @Bean
     fun spendingInsightAnalyzer(): SpendingInsightAnalyzer = SpendingInsightAnalyzer()
+
+    @Bean
+    fun cardStatementImporter(): CardStatementImporter = CardStatementImporter(MerchantCategoryClassifier())
 }
