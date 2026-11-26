@@ -25,10 +25,16 @@ const q = (value) => (value === null || value === undefined ? 'NULL' : `'${Strin
 const now = 'NOW(6)'
 
 // --- 카테고리 ---
+// 카테고리는 모든 환경에 필요한 기본값이라 스키마 마이그레이션(V4)이 넣는다. 시드는 그 식별자를 참조만 한다.
+// 두 목록이 어긋나면 거래가 엉뚱한 카테고리를 가리키므로 생성 전에 검사한다.
 const categoryIds = new Map(Object.keys(L.CATEGORIES).map((name, index) => [name, index + 1]))
-const categoryRows = Object.entries(L.CATEGORIES).map(
-  ([name, c]) => `(${categoryIds.get(name)}, ${q(name)}, ${q(c.icon)}, ${q(c.color.toUpperCase())}, ${now}, ${now})`,
-)
+const migration = readFileSync(resolve(root, 'backend/src/main/resources/db/migration/V4__insert_default_categories.sql'), 'utf8')
+const migrated = [...migration.matchAll(/\((\d+), '([^']+)'/g)].map(([, id, name]) => [Number(id), name])
+for (const [name, id] of categoryIds) {
+  if (!migrated.some(([mid, mname]) => mid === id && mname === name)) {
+    throw new Error(`V4 기본 카테고리와 프로토타입 카테고리가 다릅니다: ${id} ${name}`)
+  }
+}
 
 // --- 고정비 ---
 const firstMonth = L.MONTHS[0]
@@ -116,9 +122,7 @@ const sql = `-- 데모 시드 데이터 (dev 프로필 전용)
 --   node scripts/generate-seed.mjs
 --
 -- 원본: ui-prototypes/data.js (${L.MONTHS[0]} ~ ${L.MONTHS[L.MONTHS.length - 1]}, 기준일 ${L.TODAY})
--- 카테고리 ${categoryRows.length} · 고정비 ${fixedRows.length} · 할부 ${planRows.length} · 거래 ${transactionRows.length}
-
-${insert('category', 'id, name, icon, color, created_at, updated_at', categoryRows)}
+-- 카테고리 ${categoryIds.size}(V4 마이그레이션) · 고정비 ${fixedRows.length} · 할부 ${planRows.length} · 거래 ${transactionRows.length}
 
 ${insert('fixed_expense', 'id, category_id, merchant, amount, day_of_month, payment_method, start_month, end_month, created_at, updated_at', fixedRows)}
 
@@ -136,4 +140,4 @@ ${insert('transaction_tag', 'transaction_id, position, name', transactionTagRows
 const out = resolve(root, 'backend/src/main/resources/db/seed/V100__seed_demo_data.sql')
 writeFileSync(out, sql)
 console.log(`생성: ${out}`)
-console.log(`카테고리 ${categoryRows.length} · 고정비 ${fixedRows.length} · 할부 ${planRows.length} · 거래 ${transactionRows.length}`)
+console.log(`카테고리 ${categoryIds.size}(V4) · 고정비 ${fixedRows.length} · 할부 ${planRows.length} · 거래 ${transactionRows.length}`)

@@ -4,21 +4,7 @@
 --   node scripts/generate-seed.mjs
 --
 -- 원본: ui-prototypes/data.js (2026-06 ~ 2026-11, 기준일 2026-11-26)
--- 카테고리 12 · 고정비 8 · 할부 4 · 거래 503
-
-INSERT INTO category (id, name, icon, color, created_at, updated_at)
-VALUES (1, '식비', '🍚', '#EF4444', NOW(6), NOW(6)),
-       (2, '카페·간식', '☕', '#B45309', NOW(6), NOW(6)),
-       (3, '교통', '🚇', '#0EA5E9', NOW(6), NOW(6)),
-       (4, '쇼핑', '🛍️', '#EC4899', NOW(6), NOW(6)),
-       (5, '문화·여가', '🎬', '#10B981', NOW(6), NOW(6)),
-       (6, '생활', '🧴', '#64748B', NOW(6), NOW(6)),
-       (7, '주거·통신', '🏠', '#F59E0B', NOW(6), NOW(6)),
-       (8, '구독', '📺', '#6366F1', NOW(6), NOW(6)),
-       (9, '보험·건강', '💊', '#14B8A6', NOW(6), NOW(6)),
-       (10, '경조사·선물', '🎁', '#F97316', NOW(6), NOW(6)),
-       (11, '전자기기', '💻', '#8B5CF6', NOW(6), NOW(6)),
-       (12, '여행', '✈️', '#06B6D4', NOW(6), NOW(6));
+-- 카테고리 12(V4 마이그레이션) · 고정비 8 · 할부 4 · 거래 503
 
 INSERT INTO fixed_expense (id, category_id, merchant, amount, day_of_month, payment_method, start_month, end_month, created_at, updated_at)
 VALUES (1, 7, '월세', 650000, 1, '신한카드', '2026-06-01', NULL, NOW(6), NOW(6)),

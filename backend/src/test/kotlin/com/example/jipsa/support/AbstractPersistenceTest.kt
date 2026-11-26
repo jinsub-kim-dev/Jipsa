@@ -72,6 +72,13 @@ abstract class AbstractPersistenceTest {
         testEntityManager.clear()
     }
 
+    /**
+     * 테스트용 카테고리를 만든다. 기본 카테고리(V4 마이그레이션)와 이름이 겹치지 않도록 접두어를 붙인다.
+     */
     protected fun savedCategory(name: String = "식비"): CategoryId =
-        requireNotNull(categoryRepository.save(Category.create(name, "🍚", "#EF4444")).id)
+        requireNotNull(categoryRepository.save(Category.create("$TEST_PREFIX$name", "🍚", "#EF4444")).id)
+
+    companion object {
+        const val TEST_PREFIX: String = "T-"
+    }
 }

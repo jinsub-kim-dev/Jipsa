@@ -6,7 +6,7 @@
 - **디렉토리 구성:**
   - `backend/`: Spring Boot 백엔드 서버 (Kotlin, Clean Architecture + DDD)
   - `frontend/`: 웹 클라이언트 (React, Vite, TypeScript, Tailwind CSS, TanStack Query, Zustand, Recharts)
-  - `scripts/`: 개발 보조 스크립트 (데모 시드 SQL 생성기)
+  - `scripts/`: 데모 시드 SQL 생성기(`generate-seed.mjs`), 배포 DB 준비(`provision-db.sh`)
   - `ui-prototypes/`: UI 결정에 쓴 정적 HTML 프로토타입. `main.html` 이 현재 화면의 원본이다
 
 ---
@@ -20,20 +20,33 @@
 |---|---|---|---|
 | 백엔드 | `application-dev.yml` | `application-prod.yml` | `SPRING_PROFILES_ACTIVE` (미지정 시 dev) |
 | 프론트엔드 | `.env.development` | `.env.production` | Vite 모드 (`npm run dev`/`build:dev` vs `build`) |
-| 컨테이너 | `docker-compose.override.yml` (자동 적용) | `docker-compose.prod.yml` (`-f` 로 명시) | 아래 실행 명령어 |
+| 컨테이너 | `docker-compose.override.yml` (자동 적용) | `docker-compose.prod.yml` + `docker-compose.app.yml` (`-f` 로 명시) | 아래 실행 명령어 |
+
+**어느 장비가 어느 환경인지**는 Beetle 과 같다. 파이에서 도는 것은 언제나 prod 이며 실험은 데스크탑에서 한다.
+
+| 환경 | 도는 장비 | 비고 |
+|---|---|---|
+| **dev** | 데스크탑 PC 의 도커 | 개발·검증만 한다 |
+| **prod** | 라즈베리파이 2대 (Beetle 과 **같은 장비**) | 앱 서버 `192.168.45.101` 에 Jipsa 백엔드·프론트엔드(**8082**). DB 서버 `192.168.45.102` 의 **Beetle MySQL 안에 `jipsa` 데이터베이스** |
+
+- MySQL 을 따로 띄우지 않는다(파이 메모리). `jipsa` 계정은 `jipsa` 데이터베이스 안에서만 권한을 가진다.
+  만드는 것은 `scripts/provision-db.sh`, 절차는 `SETUP.md` 다.
+- 앱 서버에는 **MySQL 루트 비밀번호를 두지 않는다.** `docker-compose.prod.yml` 이 루트 비밀번호를 요구하지
+  않는 이유다. 앱 서버가 뚫려도 Beetle 데이터까지 내주지 않기 위함이다.
+- 빌드는 배포 대상(앱 서버 파이)에서 직접 한다. 멀티스테이지 `Dockerfile` 이 컨테이너 안에서 arm64 로 빌드한다.
 
 ### 2.1 환경별 차이
 
 | 항목 | dev | prod | 이유 |
 |---|---|---|---|
 | DB 접속 정보 | 기본값 있음 (localhost) | **기본값 없음 — 없으면 기동 실패** | 설정을 빠뜨린 채로 떠서 엉뚱한 DB 에 붙는 것보다 뜨지 않는 편이 안전하다 |
-| 시드 데이터 (`db/seed`) | 적용 | **미적용** | 데모 데이터가 실제 데이터와 섞이면 안 된다 |
+| 시드 데이터 (`db/seed`) | 적용 | **미적용** | 데모 데이터가 실제 데이터와 섞이면 안 된다. 기본 카테고리는 시드가 아니라 마이그레이션(V4)이라 양쪽에 들어간다 |
 | Flyway `baseline-on-migrate` | 허용 | 금지 | 비어 있지 않은 DB 에 처음 배포하면 실패해야 하고, 그때 사람이 판단해야 한다 |
 | API 문서 (`/swagger-ui.html`) | 노출 | 차단(404) | 스펙을 외부에 드러낼 이유가 없다 |
 | 관리 엔드포인트 | health,info,metrics,env,beans,mappings | **health 만** | `env`/`beans` 는 설정과 내부 구조를 드러낸다 |
 | 오류 응답 | 예외 메시지 포함 | code/message 만 | PRD 6절의 오류 규약만 노출한다 |
 | SQL 로그 | 출력 | 미출력 | |
-| 호스트 포트 노출 | MySQL(13307)·백엔드(8081)·프론트엔드(5174) | **프론트엔드만** | 브라우저가 보는 오리진은 하나이며 nginx 가 `/api` 를 프록시한다 |
+| 호스트 포트 노출 | MySQL(13307)·백엔드(8081)·프론트엔드(5174) | **프론트엔드만(8082)** | 브라우저가 보는 오리진은 하나이며 nginx 가 `/api` 를 프록시한다. 같은 파이의 80 은 Beetle 이 쓴다 |
 | 프론트엔드 소스맵 | 포함 | 미포함 | 원본 코드가 그대로 노출된다 |
 | 화면 환경 배지 | `LOCAL` 표시 | 미표시 | 로컬 화면을 배포 화면으로 착각하고 데이터를 넣는 일을 막는다 |
 
@@ -51,16 +64,16 @@ docker compose down               # 종료
 docker compose down -v            # 데이터까지 초기화
 ```
 
-**배포(prod)** — 파일을 명시하고, 접속 정보를 환경 변수나 `.env` 로 제공해야 한다.
+**배포(prod, 앱 서버 파이)** — 파일을 명시하고, 접속 정보를 `.env` 로 제공해야 한다. 절차 전체는 `SETUP.md`.
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.app.yml up -d --build
 ```
 
 - **기본 접속 주소**
 
   | 서비스 | 로컬(dev) | 배포(prod) | 비고 |
   |---|---|---|---|
-  | 프론트엔드 | `http://localhost:5174` | `http://<host>` (기본 80) | nginx 가 `/api` 를 백엔드로 프록시하므로 CORS 설정이 필요 없다 |
+  | 프론트엔드 | `http://localhost:5174` | `http://192.168.45.101:8082` | nginx 가 `/api` 를 백엔드로 프록시하므로 CORS 설정이 필요 없다 |
   | 백엔드 | `http://localhost:8081` | 노출하지 않음 | 로컬 문서: `/swagger-ui.html` |
   | MySQL | `localhost:13307` | 노출하지 않음 | 컨테이너 안쪽은 3306 |
 
@@ -112,5 +125,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 2. `backend/CLAUDE.md` — 백엔드 아키텍처·DDD·테스트 규칙
 3. `frontend/CLAUDE.md` — 프론트엔드 구조·상태 관리·테스트 규칙
 4. 본 문서 — 모노레포 구조, 환경 분리, 인프라 실행, 전 영역 공통 원칙
+
+절차 문서는 위 우선순위 밖이며, 위 문서들의 정책을 실행 순서로 풀어 쓴 것이다. 정책이 바뀌면 함께 고친다.
+- `SETUP.md` — 라즈베리파이 배포·운영(백업·복구·재배포) 절차
+- `README.md` — 실행 명령 요약과 API 요약
 
 내용이 충돌하면 위 순서의 상위 문서를 따르고, **충돌 사실을 보고한다.**

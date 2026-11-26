@@ -16,11 +16,12 @@
 Jipsa/
  ┣ backend/           Spring Boot 4 · Kotlin · JPA · Flyway · MySQL (클린 아키텍처 + DDD)
  ┣ frontend/          React 19 · Vite · TypeScript · Tailwind v4 · TanStack Query · Zustand · Recharts
- ┣ scripts/           generate-seed.mjs — 프로토타입 더미데이터 → dev 시드 SQL
+ ┣ scripts/           generate-seed.mjs(dev 시드 생성) · provision-db.sh(배포 DB 준비)
  ┣ ui-prototypes/     화면 후보 HTML (main.html 이 현재 화면의 원본)
  ┣ docker-compose.yml           공통
  ┣ docker-compose.override.yml  로컬(dev) — 자동 적용
- ┗ docker-compose.prod.yml      배포(prod) — -f 로 명시
+ ┣ docker-compose.prod.yml      배포(prod) — -f 로 명시
+ ┗ docker-compose.app.yml       배포 앱 서버 — DB 는 다른 호스트(Beetle MySQL)
 ```
 
 ## 실행
@@ -60,10 +61,11 @@ dev 프로필은 `db/seed` 의 데모 데이터(2026년 6~11월, 약 500건)를 
 node scripts/generate-seed.mjs
 ```
 
-**배포(prod)** — 접속 정보를 `.env` 로 주어야 하며, 없으면 기동하지 않는다.
+**배포(prod)** — Beetle 이 도는 라즈베리파이 두 대에 함께 올린다. 앱은 앱 서버의 **8082**,
+DB 는 DB 서버의 Beetle MySQL 안 `jipsa` 데이터베이스다. 절차는 [`SETUP.md`](SETUP.md).
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.app.yml up -d --build
 ```
 
 ## 검증

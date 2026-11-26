@@ -12,6 +12,7 @@ import com.example.jipsa.domain.model.Transaction
 import com.example.jipsa.domain.model.TransactionId
 import com.example.jipsa.domain.model.TransactionSearchCriteria
 import com.example.jipsa.support.AbstractPersistenceTest
+import com.example.jipsa.support.AbstractPersistenceTest.Companion.TEST_PREFIX
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -46,10 +47,10 @@ class PersistenceTest : AbstractPersistenceTest() {
 
             val found = categoryRepository.findById(id)!!
 
-            assertThat(found.name).isEqualTo("카페·간식")
+            assertThat(found.name).isEqualTo("T-카페·간식")
             assertThat(found.icon).isEqualTo("🍚")
             assertThat(found.color).isEqualTo("#EF4444")
-            assertThat(categoryRepository.existsByName("카페·간식")).isTrue()
+            assertThat(categoryRepository.existsByName("T-카페·간식")).isTrue()
         }
 
         @Test
@@ -58,7 +59,17 @@ class PersistenceTest : AbstractPersistenceTest() {
             categoryRepository.save(categoryRepository.findById(id)!!.rename("외식"))
             flushAndClear()
 
-            assertThat(categoryRepository.findAll().map(Category::name)).containsExactly("외식")
+            assertThat(categoryRepository.findAll().map(Category::name)).contains("외식").doesNotContain("T-식비")
+        }
+
+        @Test
+        fun `기본 카테고리는 시드 없이 마이그레이션만으로 들어간다`() {
+            // 배포 환경은 시드를 적용하지 않는다. 카테고리가 없으면 지출을 등록할 수 없다
+            val defaults = categoryRepository.findAll().filterNot { it.name.startsWith(TEST_PREFIX) }
+
+            assertThat(defaults).hasSize(12)
+            assertThat(defaults.first().name).isEqualTo("식비")
+            assertThat(defaults.map { it.id!!.value }).isEqualTo((1L..12L).toList())
         }
     }
 
