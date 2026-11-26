@@ -6,7 +6,7 @@ import { transactionsLink } from '@/features/transactions/transactionFilter'
 import { countByReason, type ImportJob, needsAttention, unprocessedLabel } from '@/lib/cardImport'
 import { formatKrw, formatMonthDay } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { CardImportResult } from '@/types/api'
+import type { CardImportItem, CardImportResult } from '@/types/api'
 
 /** 올린 파일 하나의 진행 상태와 결과. */
 export function CardImportResultCard({ job }: { job: ImportJob }) {
@@ -60,7 +60,7 @@ function StatusBadge({ job }: { job: ImportJob }) {
 function ResultBody({ result }: { result: CardImportResult }) {
   return (
     <div className="space-y-4">
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="전체 줄" value={result.totalRowCount} />
         <Stat
           label="추가"
@@ -71,6 +71,7 @@ function ResultBody({ result }: { result: CardImportResult }) {
               : undefined
           }
         />
+        <Stat label="고정비" value={result.fixedExpenseCount} hint="등록된 고정비" />
         <Stat label="중복 무시" value={result.duplicateCount} hint="이미 있는 내역" />
         <Stat
           label="미분류"
@@ -84,6 +85,14 @@ function ResultBody({ result }: { result: CardImportResult }) {
         />
       </dl>
 
+      {result.fixedExpenseCount > 0 && (
+        <Collapsible
+          title={`고정비 ${result.fixedExpenseCount}건`}
+          description="등록된 고정비와 사용처가 같아 그 달의 고정비 거래로 넣었어요. 자동 기록이 있던 달은 카드의 날짜·금액으로 고쳤어요."
+        >
+          <PurchaseTable items={result.fixedExpenses} />
+        </Collapsible>
+      )}
       {result.uncategorizedCount > 0 && <UncategorizedList result={result} />}
       {result.unprocessedCount > 0 && <UnprocessedList result={result} />}
     </div>
@@ -124,27 +133,33 @@ function UncategorizedList({ result }: { result: CardImportResult }) {
         </Link>
       }
     >
-      <table className="w-full text-sm">
-        <tbody>
-          {result.uncategorized.map((item, index) => (
-            <tr key={`${item.spentDate}-${item.merchant}-${index}`} className="border-t">
-              <td className="text-muted-foreground w-16 py-1.5 tabular-nums">
-                {formatMonthDay(item.spentDate)}
-              </td>
-              <td className="py-1.5">
-                {item.merchant}
-                {item.installmentMonths !== undefined && (
-                  <span className="text-muted-foreground ml-1 text-xs">
-                    {item.installmentMonths}개월 할부
-                  </span>
-                )}
-              </td>
-              <td className="py-1.5 text-right tabular-nums">{formatKrw(item.amount)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <PurchaseTable items={result.uncategorized} />
     </Collapsible>
+  )
+}
+
+function PurchaseTable({ items }: { items: CardImportItem[] }) {
+  return (
+    <table className="w-full text-sm">
+      <tbody>
+        {items.map((item, index) => (
+          <tr key={`${item.spentDate}-${item.merchant}-${index}`} className="border-t">
+            <td className="text-muted-foreground w-16 py-1.5 tabular-nums">
+              {formatMonthDay(item.spentDate)}
+            </td>
+            <td className="py-1.5">
+              {item.merchant}
+              {item.installmentMonths !== undefined && (
+                <span className="text-muted-foreground ml-1 text-xs">
+                  {item.installmentMonths}개월 할부
+                </span>
+              )}
+            </td>
+            <td className="py-1.5 text-right tabular-nums">{formatKrw(item.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

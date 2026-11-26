@@ -1,4 +1,4 @@
-import type { ExpenseKind, IsoDate, YearMonthString } from './domain'
+import type { ExpenseKind, FixedExpense, IsoDate, Transaction, YearMonthString } from './domain'
 
 /** 백엔드 오류 응답 (PRD 6절). */
 export interface ApiErrorResponse {
@@ -85,6 +85,9 @@ export interface CardImportResult {
   importedCount: number
   importedTransactionCount: number
   importedInstallmentPlanCount: number
+  /** 등록된 고정비의 그 달 거래가 된 구매 수. `importedCount` 에 들어가지 않는다. */
+  fixedExpenseCount: number
+  fixedExpenses: CardImportItem[]
   /** 이미 있어서 무시한 구매 수. */
   duplicateCount: number
   uncategorizedCategoryId: number
@@ -115,4 +118,14 @@ export interface CardImportUnprocessed {
   spentDate?: IsoDate
   merchant?: string
   amount?: number
+}
+
+/** 일반 지출을 고정비로 전환한 결과 (PRD 3.2.1). */
+export interface FixedExpenseConversionResult {
+  fixedExpense: FixedExpense
+  convertedTransactionCount: number
+  /** 고정비 거래로 바뀐 거래. 고른 거래도 들어 있다. 소비일 순. */
+  convertedTransactions: Transaction[]
+  /** 같은 사용처가 여럿이라 바꾸지 않은 달. */
+  ambiguousMonths: YearMonthString[]
 }

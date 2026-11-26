@@ -1,5 +1,6 @@
 package com.example.jipsa.presentation.dto
 
+import com.example.jipsa.application.port.FixedExpenseConversionResult
 import com.example.jipsa.application.port.RegisterFixedExpenseCommand
 import com.example.jipsa.application.port.RegisterInstallmentPlanCommand
 import com.example.jipsa.domain.model.CategoryId
@@ -44,6 +45,34 @@ data class TerminateFixedExpenseRequest(
     @field:NotNull(message = "마지막 달은 필수입니다. (yyyy-MM)")
     val lastMonth: YearMonth?,
 )
+
+/** 일반 지출을 고정비로 전환하는 요청 (PRD 3.2.1). */
+data class ConvertToFixedExpenseRequest(
+    @field:NotNull(message = "전환할 거래는 필수입니다.")
+    val transactionId: Long?,
+)
+
+/**
+ * 고정비로 전환 결과. 화면이 "몇 건이 함께 바뀌었고 어느 달은 그대로인지" 를 설명할 수 있게 목록을 준다.
+ *
+ * @property ambiguousMonths 같은 사용처가 여럿이라 바꾸지 않은 달
+ */
+data class FixedExpenseConversionResponse(
+    val fixedExpense: FixedExpenseResponse,
+    val convertedTransactions: List<TransactionResponse>,
+    val ambiguousMonths: List<YearMonth>,
+) {
+    val convertedTransactionCount: Int get() = convertedTransactions.size
+
+    companion object {
+        fun of(result: FixedExpenseConversionResult, month: YearMonth): FixedExpenseConversionResponse =
+            FixedExpenseConversionResponse(
+                fixedExpense = FixedExpenseResponse.from(result.fixedExpense, month),
+                convertedTransactions = result.convertedTransactions.map(TransactionResponse::from),
+                ambiguousMonths = result.ambiguousMonths,
+            )
+    }
+}
 
 /**
  * 고정비 응답. [month] 를 기준으로 그 달에 나가는지와 실제 납부일(말일 보정 반영)을 함께 담는다.

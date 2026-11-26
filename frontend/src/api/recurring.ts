@@ -1,5 +1,9 @@
 import { apiClient } from './client'
-import type { RegisterFixedExpenseRequest, RegisterInstallmentPlanRequest } from '@/types/api'
+import type {
+  FixedExpenseConversionResult,
+  RegisterFixedExpenseRequest,
+  RegisterInstallmentPlanRequest,
+} from '@/types/api'
 import type { FixedExpense, InstallmentPlan, YearMonthString } from '@/types/domain'
 
 export const fixedExpenseApi = {
@@ -12,6 +16,15 @@ export const fixedExpenseApi = {
 
   async register(request: RegisterFixedExpenseRequest): Promise<FixedExpense> {
     const { data } = await apiClient.post<FixedExpense>('/api/fixed-expenses', request)
+    return data
+  },
+
+  /** 일반 지출로 고정비를 만들고 같은 사용처의 다른 달 일반 지출도 함께 바꾼다. */
+  async convertFromTransaction(transactionId: number): Promise<FixedExpenseConversionResult> {
+    const { data } = await apiClient.post<FixedExpenseConversionResult>(
+      '/api/fixed-expenses/conversions',
+      { transactionId },
+    )
     return data
   },
 

@@ -11,6 +11,7 @@ import java.time.LocalDate
  * 파일의 줄 하나는 다음 중 하나로 끝난다. 화면이 "왜 이 건이 안 들어왔는지" 를 설명할 수 있게
  * 건수뿐 아니라 목록을 함께 준다.
  * - 추가: 새 거래·할부 계획이 됐다. 그중 일부는 미분류([uncategorized])다
+ * - 고정비: 등록된 고정비의 그 달 거래가 됐다([fixedExpenses])
  * - 중복: 이미 있어서 건너뛰었다([duplicateCount])
  * - 처리 안 됨: 취소됐거나 읽을 수 없었다([unprocessed], 사유 포함)
  *
@@ -24,12 +25,14 @@ data class CardImportResponse(
     val totalRowCount: Int,
     val importedTransactionCount: Int,
     val importedInstallmentPlanCount: Int,
+    val fixedExpenses: List<CardImportItemResponse>,
     val duplicateCount: Int,
     val uncategorizedCategoryId: Long,
     val uncategorized: List<CardImportItemResponse>,
     val unprocessed: List<CardImportUnprocessedResponse>,
 ) {
     val importedCount: Int get() = importedTransactionCount + importedInstallmentPlanCount
+    val fixedExpenseCount: Int get() = fixedExpenses.size
     val uncategorizedCount: Int get() = uncategorized.size
     val unprocessedCount: Int get() = unprocessed.size
 
@@ -42,6 +45,7 @@ data class CardImportResponse(
                 totalRowCount = reading.totalRowCount,
                 importedTransactionCount = result.importedTransactionCount,
                 importedInstallmentPlanCount = result.importedInstallmentPlanCount,
+                fixedExpenses = result.fixedExpenseMatches.map(CardImportItemResponse::from),
                 duplicateCount = result.duplicates.size,
                 uncategorizedCategoryId = result.uncategorizedCategoryId.value,
                 uncategorized = result.uncategorized.map(CardImportItemResponse::from),

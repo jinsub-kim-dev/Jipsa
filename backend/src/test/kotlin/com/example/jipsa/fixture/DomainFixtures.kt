@@ -62,6 +62,7 @@ fun fixedExpense(
     endMonth: YearMonth? = null,
     categoryId: Long = 7L,
     tags: Tags = Tags.of("집"),
+    paymentMethod: String? = "신한카드",
     id: Long? = 1L,
 ): FixedExpense {
     val created = FixedExpense.create(
@@ -71,7 +72,7 @@ fun fixedExpense(
         dayOfMonth = dayOfMonth,
         startMonth = startMonth,
         tags = tags,
-        paymentMethod = "신한카드",
+        paymentMethod = paymentMethod,
     )
     val withId = id?.let { created.assignId(FixedExpenseId(it)) } ?: created
     return endMonth?.let(withId::terminate) ?: withId

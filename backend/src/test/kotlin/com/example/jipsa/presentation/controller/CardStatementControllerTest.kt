@@ -61,7 +61,7 @@ class CardStatementControllerTest {
         every { cardStatementImportUseCase.importStatement(capture(captured)) } returns emptyResult
     }
 
-    private val emptyResult = CardImportResult(0, 0, emptyList(), emptyList(), CategoryId(13), emptyList())
+    private val emptyResult = CardImportResult(0, emptyList(), 0, emptyList(), emptyList(), CategoryId(13), emptyList())
 
     private fun bytes(workbook: Workbook): ByteArray = ByteArrayOutputStream().also { workbook.use { wb -> wb.write(it) } }.toByteArray()
 
@@ -155,6 +155,7 @@ class CardStatementControllerTest {
         // given
         every { cardStatementImportUseCase.importStatement(capture(captured)) } returns CardImportResult(
             importedTransactionCount = 1,
+            fixedExpenseMatches = listOf(CardPurchase.LumpSum(LocalDate.of(2026, 11, 25), "OO보험", won(15_000))),
             importedInstallmentPlanCount = 0,
             duplicates = emptyList(),
             uncategorized = listOf(CardPurchase.LumpSum(LocalDate.of(2026, 11, 25), "OO김밥", won(8_000))),
@@ -169,6 +170,8 @@ class CardStatementControllerTest {
             .andExpect(jsonPath("$.totalRowCount").value(2))
             .andExpect(jsonPath("$.importedCount").value(1))
             .andExpect(jsonPath("$.duplicateCount").value(0))
+            .andExpect(jsonPath("$.fixedExpenseCount").value(1))
+            .andExpect(jsonPath("$.fixedExpenses[0].merchant").value("OO보험"))
             .andExpect(jsonPath("$.uncategorizedCount").value(1))
             .andExpect(jsonPath("$.uncategorizedCategoryId").value(13))
             .andExpect(jsonPath("$.uncategorized[0].merchant").value("OO김밥"))

@@ -120,7 +120,9 @@ com.example.jipsa
   - `CommitmentForecaster`: 고정비 + 할부 → 앞으로 n개월의 약정 지출
   - `CategoryTrendAnalyzer`: 카테고리별 월 합계 → 빈 칸 채움, 전월 대비 증감률, 정렬 확정
   - `SpendingInsightAnalyzer`: 월별 합계 → 직전 3개월 평균 대비, 가장 늘어난 카테고리, 약정 비중
-  - `CardStatementImporter`: 카드 이용내역 + 기존 거래·할부 → 새로 만들 거래·할부 계획 (내용 비교로 중복 제외)
+  - `CardStatementImporter`: 카드 이용내역 + 기존 거래·할부·고정비 → 새로 만들 거래·할부 계획 (내용 비교로 중복 제외,
+    등록된 고정비와 사용처가 같으면 그 달의 고정비 거래)
+  - `FixedExpenseConverter`: 일반 지출 하나 + 같은 사용처의 일반 지출 → 새 고정비와 그 고정비 거래로 바꿀 거래 (달마다 하나)
   - `MerchantCategoryClassifier`: 사용처 → 분류 규칙의 카테고리 이름 (규칙 순서대로, 없으면 미분류)
 - 카드 이용내역 **파일 형식**(엑셀 열 이름)은 도메인이 모른다. `presentation/statement` 의 읽기 어댑터가
   해석해 `CardStatement` 로 넘긴다. 인프라는 다른 레이어가 참조할 수 없으므로(ArchUnit) 입력 어댑터는 프레젠테이션에 둔다.

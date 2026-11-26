@@ -7,19 +7,21 @@ import com.example.jipsa.domain.model.Category
 import com.example.jipsa.domain.model.CategoryId
 import com.example.jipsa.domain.model.TransactionSearchCriteria
 import com.example.jipsa.domain.repository.CategoryRepository
+import com.example.jipsa.domain.repository.FixedExpenseRepository
 import com.example.jipsa.domain.repository.InstallmentPlanRepository
 import com.example.jipsa.domain.repository.TransactionRepository
 import com.example.jipsa.domain.service.CardStatementImporter
 import com.example.jipsa.domain.service.MerchantCategoryClassifier
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.YearMonth
 
 /**
  * 카드 이용내역 가져오기 오케스트레이션 (PRD 3.5).
  *
  * 무엇을 만들지는 [CardStatementImporter] 가 정하고, 이 서비스는 읽고 저장만 한다.
  *
- * 한 유스케이스에서 거래·할부 계획·카테고리(미분류) 세 애그리거트를 바꾼다 (backend/CLAUDE.md 4.1 예외).
+ * 한 유스케이스에서 거래(일반·고정비)·할부 계획·카테고리(미분류) 세 애그리거트를 바꾼다 (backend/CLAUDE.md 4.1 예외).
  * 파일 하나는 전부 들어가거나 전부 들어가지 않아야 한다. 절반만 들어간 뒤 다시 가져오면
  * 내용 비교가 어디까지 들어갔는지 맞혀야 하는데, 할부 회차가 일부만 남는 경우까지 생긴다.
  */
@@ -29,6 +31,7 @@ class CardStatementImportService(
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
     private val installmentPlanRepository: InstallmentPlanRepository,
+    private val fixedExpenseRepository: FixedExpenseRepository,
     private val cardStatementImporter: CardStatementImporter,
 ) : CardStatementImportUseCase {
 
@@ -36,8 +39,13 @@ class CardStatementImportService(
     override fun importStatement(statement: CardStatement): CardImportResult {
         val categories = categoryRepository.findAll()
         val uncategorizedId = uncategorizedIdIn(categories)
+        // 달 전체를 읽는다. 고정비의 자동 기록은 납부일에 있어 이용내역 기간 밖일 수 있다.
         val existingTransactions = statement.lumpSumPeriod()
-            ?.let { transactionRepository.search(TransactionSearchCriteria(from = it.start, to = it.endInclusive)) }
+            ?.let {
+                transactionRepository.search(
+                    TransactionSearchCriteria(from = it.start.withDayOfMonth(1), to = YearMonth.from(it.endInclusive).atEndOfMonth()),
+                )
+            }
             .orEmpty()
 
         val plan = cardStatementImporter.plan(
@@ -46,9 +54,11 @@ class CardStatementImportService(
             uncategorizedId = uncategorizedId,
             existingTransactions = existingTransactions,
             existingPlans = installmentPlanRepository.findAll(),
+            fixedExpenses = fixedExpenseRepository.findAll(),
         )
 
-        transactionRepository.saveAll(plan.transactions)
+        transactionRepository.saveAll(plan.transactions + plan.fixedExpenseOccurrences)
+        plan.fixedExpenseCorrections.forEach(transactionRepository::save)
         plan.installmentPlans.forEach { installmentPlan ->
             val saved = installmentPlanRepository.save(installmentPlan)
             transactionRepository.saveAll(saved.scheduleParts())
@@ -56,6 +66,7 @@ class CardStatementImportService(
 
         return CardImportResult(
             importedTransactionCount = plan.transactions.size,
+            fixedExpenseMatches = plan.fixedExpenseMatches,
             importedInstallmentPlanCount = plan.installmentPlans.size,
             duplicates = plan.duplicates,
             uncategorized = plan.uncategorized,

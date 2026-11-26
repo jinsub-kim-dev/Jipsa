@@ -1,6 +1,7 @@
 package com.example.jipsa.presentation.controller
 
 import com.example.jipsa.application.port.CategoryUseCase
+import com.example.jipsa.application.port.FixedExpenseConversionResult
 import com.example.jipsa.application.port.FixedExpenseUseCase
 import com.example.jipsa.application.port.InstallmentPlanUseCase
 import com.example.jipsa.application.port.StatisticsUseCase
@@ -12,6 +13,7 @@ import com.example.jipsa.domain.model.KindAmounts
 import com.example.jipsa.domain.model.MonthlyKindAmounts
 import com.example.jipsa.domain.model.SpendingComparison
 import com.example.jipsa.domain.model.Tag
+import com.example.jipsa.domain.model.TransactionId
 import com.example.jipsa.domain.query.TagTotal
 import com.example.jipsa.domain.service.CategoryIncrease
 import com.example.jipsa.domain.service.CategoryTrend
@@ -19,6 +21,7 @@ import com.example.jipsa.domain.service.MonthlyCommitment
 import com.example.jipsa.domain.service.SpendingInsight
 import com.example.jipsa.fixture.category
 import com.example.jipsa.fixture.fixedExpense
+import com.example.jipsa.fixture.generalTransaction
 import com.example.jipsa.fixture.installmentPlan
 import com.example.jipsa.fixture.won
 import io.mockk.clearMocks
@@ -39,6 +42,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Clock
@@ -127,6 +131,31 @@ class OtherControllersTest {
             post("/api/fixed-expenses/4/terminate").contentType(MediaType.APPLICATION_JSON).content("""{"lastMonth":"2026-12"}"""),
         ).andExpect(jsonPath("$.endMonth").value("2026-12"))
         mockMvc.perform(post("/api/fixed-expenses/records?month=2026-11")).andExpect(jsonPath("$.recordedCount").value(2))
+    }
+
+    @Test
+    fun `일반 지출을 고정비로 전환하면 바뀐 거래와 바꾸지 않은 달을 준다`() {
+        // given
+        val converted = generalTransaction(id = 12).convertToFixedOccurrence(FixedExpenseId(4))
+        every { fixedExpenseUseCase.convertFromTransaction(TransactionId(12)) } returns
+            FixedExpenseConversionResult(fixedExpense(id = 4), listOf(converted), listOf(YearMonth.of(2026, 8)))
+
+        // when
+        mockMvc.perform(post("/api/fixed-expenses/conversions").contentType(MediaType.APPLICATION_JSON).content("""{"transactionId":12}"""))
+            // then
+            .andExpect(status().isCreated)
+            .andExpect(header().string("Location", "/api/fixed-expenses/4"))
+            .andExpect(jsonPath("$.fixedExpense.id").value(4))
+            .andExpect(jsonPath("$.convertedTransactionCount").value(1))
+            .andExpect(jsonPath("$.convertedTransactions[0].kind").value("FIXED"))
+            .andExpect(jsonPath("$.ambiguousMonths[0]").value("2026-08"))
+    }
+
+    @Test
+    fun `전환할 거래가 없으면 400 이다`() {
+        mockMvc.perform(post("/api/fixed-expenses/conversions").contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
     }
 
     @Test

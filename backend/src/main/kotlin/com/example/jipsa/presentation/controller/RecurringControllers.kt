@@ -4,6 +4,9 @@ import com.example.jipsa.application.port.FixedExpenseUseCase
 import com.example.jipsa.application.port.InstallmentPlanUseCase
 import com.example.jipsa.domain.model.FixedExpenseId
 import com.example.jipsa.domain.model.InstallmentPlanId
+import com.example.jipsa.domain.model.TransactionId
+import com.example.jipsa.presentation.dto.ConvertToFixedExpenseRequest
+import com.example.jipsa.presentation.dto.FixedExpenseConversionResponse
 import com.example.jipsa.presentation.dto.FixedExpenseResponse
 import com.example.jipsa.presentation.dto.InstallmentPlanResponse
 import com.example.jipsa.presentation.dto.RecordFixedExpensesResponse
@@ -39,6 +42,14 @@ class FixedExpenseController(
         val saved = fixedExpenseUseCase.register(request.toCommand())
         val response = FixedExpenseResponse.from(saved, YearMonth.now(clock))
         return ResponseEntity.created(URI.create("/api/fixed-expenses/${response.id}")).body(response)
+    }
+
+    /** 일반 지출로 고정비를 만들고 같은 사용처의 다른 달 일반 지출도 함께 바꾼다 (PRD 3.2.1). */
+    @PostMapping("/conversions")
+    fun convert(@Valid @RequestBody request: ConvertToFixedExpenseRequest): ResponseEntity<FixedExpenseConversionResponse> {
+        val result = fixedExpenseUseCase.convertFromTransaction(TransactionId(request.transactionId!!))
+        val response = FixedExpenseConversionResponse.of(result, YearMonth.now(clock))
+        return ResponseEntity.created(URI.create("/api/fixed-expenses/${response.fixedExpense.id}")).body(response)
     }
 
     @GetMapping

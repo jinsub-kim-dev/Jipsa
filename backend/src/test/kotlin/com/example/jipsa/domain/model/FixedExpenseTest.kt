@@ -1,7 +1,9 @@
 package com.example.jipsa.domain.model
 
+import com.example.jipsa.domain.exception.DomainStateException
 import com.example.jipsa.domain.exception.InvariantViolationException
 import com.example.jipsa.fixture.fixedExpense
+import com.example.jipsa.fixture.generalTransaction
 import com.example.jipsa.fixture.won
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -134,6 +136,102 @@ class FixedExpenseTest {
                 fixedExpense(startMonth = YearMonth.of(2026, 1), endMonth = YearMonth.of(2026, 3))
                     .occurrenceIn(YearMonth.of(2026, 11))
             }.isInstanceOf(InvariantViolationException::class.java)
+        }
+    }
+
+    @Nested
+    @DisplayName("사용처 비교")
+    inner class Merchant {
+
+        @ParameterizedTest(name = "\"{0}\" -> {1}")
+        @CsvSource(
+            "OO보험, true",
+            "oo 보험, true",
+            "ＯＯ　보험, true",
+            "OO보험(주), false",
+            "OO화재, false",
+        )
+        fun `공백·대소문자·전각을 무시하고 사용처가 같은지 본다`(merchant: String, expected: Boolean) {
+            assertThat(fixedExpense(merchant = "OO보험").isFor(merchant)).isEqualTo(expected)
+        }
+    }
+
+    @Nested
+    @DisplayName("실제값으로 기록 (PRD 3.5)")
+    inner class ActualOccurrence {
+
+        @Test
+        fun `실제로 나간 날과 금액으로 고정비 거래를 만든다`() {
+            // when
+            val occurrence = fixedExpense(amount = 15_000, dayOfMonth = 25).actualOccurrence(LocalDate.of(2026, 10, 27), won(15_920))
+
+            // then
+            assertThat(occurrence.kind).isEqualTo(ExpenseKind.FIXED)
+            assertThat(occurrence.fixedExpenseId).isEqualTo(FixedExpenseId(1))
+            assertThat(occurrence.spentDate).isEqualTo(LocalDate.of(2026, 10, 27))
+            assertThat(occurrence.amount).isEqualTo(won(15_920))
+        }
+
+        @Test
+        fun `기간 밖의 날에는 만들 수 없다`() {
+            assertThatThrownBy {
+                fixedExpense(startMonth = YearMonth.of(2026, 11)).actualOccurrence(LocalDate.of(2026, 10, 31), won(1))
+            }.isInstanceOf(InvariantViolationException::class.java)
+        }
+
+        @Test
+        fun `자동 기록 그대로인 거래만 자동 기록으로 본다`() {
+            // given
+            val expense = fixedExpense(amount = 15_000, dayOfMonth = 31)
+            val scheduled = expense.occurrenceIn(YearMonth.of(2026, 11))
+
+            // then
+            assertThat(scheduled.spentDate).isEqualTo(LocalDate.of(2026, 11, 30))
+            assertThat(expense.isScheduledOccurrence(scheduled)).isTrue()
+            assertThat(expense.isScheduledOccurrence(scheduled.correctAmount(won(15_920)))).isFalse()
+            assertThat(expense.isScheduledOccurrence(scheduled.reschedule(LocalDate.of(2026, 11, 28)))).isFalse()
+            assertThat(fixedExpense(amount = 15_000, dayOfMonth = 31, id = 2).isScheduledOccurrence(scheduled)).isFalse()
+        }
+    }
+
+    @Nested
+    @DisplayName("일반 지출로 정의 (PRD 3.2.1)")
+    inner class DefineFrom {
+
+        private val source = generalTransaction(
+            amount = 15_000, merchant = "OO보험", spentDate = LocalDate.of(2026, 10, 27), categoryId = 6, tags = Tags.of("보험"),
+        )
+
+        @Test
+        fun `거래의 값으로 정의하고 소비일의 일이 납부일이다`() {
+            // when
+            val expense = FixedExpense.defineFrom(source, startMonth = YearMonth.of(2026, 9))
+
+            // then
+            assertThat(expense.id).isNull()
+            assertThat(expense.merchant).isEqualTo("OO보험")
+            assertThat(expense.amount).isEqualTo(won(15_000))
+            assertThat(expense.categoryId).isEqualTo(CategoryId(6))
+            assertThat(expense.tags.names).containsExactly("보험")
+            assertThat(expense.paymentMethod).isEqualTo("신한카드")
+            assertThat(expense.dayOfMonth).isEqualTo(27)
+            assertThat(expense.startMonth).isEqualTo(YearMonth.of(2026, 9))
+            assertThat(expense.endMonth).isNull()
+        }
+
+        @Test
+        fun `시작월은 거래의 달일 수 있지만 그보다 늦을 수 없다`() {
+            assertThat(FixedExpense.defineFrom(source, YearMonth.of(2026, 10)).startMonth).isEqualTo(YearMonth.of(2026, 10))
+            assertThatThrownBy { FixedExpense.defineFrom(source, YearMonth.of(2026, 11)) }
+                .isInstanceOf(InvariantViolationException::class.java)
+        }
+
+        @Test
+        fun `일반 지출이 아니면 정의할 수 없다`() {
+            val occurrence = fixedExpense().occurrenceIn(YearMonth.of(2026, 11))
+
+            assertThatThrownBy { FixedExpense.defineFrom(occurrence, YearMonth.of(2026, 11)) }
+                .isInstanceOf(DomainStateException::class.java)
         }
     }
 

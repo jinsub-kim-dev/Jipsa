@@ -2,11 +2,15 @@ package com.example.jipsa.application.service
 
 import com.example.jipsa.domain.model.Category
 import com.example.jipsa.domain.model.CategoryId
+import com.example.jipsa.domain.model.ExpenseKind
+import com.example.jipsa.domain.model.FixedExpenseId
 import com.example.jipsa.domain.model.InstallmentPlan
 import com.example.jipsa.domain.model.InstallmentPlanId
 import com.example.jipsa.domain.model.Transaction
+import com.example.jipsa.domain.model.TransactionId
 import com.example.jipsa.domain.model.TransactionSearchCriteria
 import com.example.jipsa.domain.repository.CategoryRepository
+import com.example.jipsa.domain.repository.FixedExpenseRepository
 import com.example.jipsa.domain.repository.InstallmentPlanRepository
 import com.example.jipsa.domain.repository.TransactionRepository
 import com.example.jipsa.domain.service.CardStatementImporter
@@ -15,6 +19,7 @@ import com.example.jipsa.domain.service.MerchantCategoryClassifier
 import com.example.jipsa.fixture.cardEntry
 import com.example.jipsa.fixture.cardStatement
 import com.example.jipsa.fixture.category
+import com.example.jipsa.fixture.fixedExpense
 import com.example.jipsa.fixture.won
 import io.mockk.every
 import io.mockk.mockk
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.time.YearMonth
 
 @DisplayName("카드 이용내역 가져오기 서비스")
 class CardStatementImportServiceTest {
@@ -32,10 +38,12 @@ class CardStatementImportServiceTest {
     private val categoryRepository = mockk<CategoryRepository>()
     private val transactionRepository = mockk<TransactionRepository>()
     private val installmentPlanRepository = mockk<InstallmentPlanRepository>()
+    private val fixedExpenseRepository = mockk<FixedExpenseRepository>()
     private val service = CardStatementImportService(
         categoryRepository,
         transactionRepository,
         installmentPlanRepository,
+        fixedExpenseRepository,
         CardStatementImporter(MerchantCategoryClassifier(listOf(CategoryRule("식비", listOf("김밥"))))),
     )
 
@@ -47,6 +55,7 @@ class CardStatementImportServiceTest {
         every { transactionRepository.search(any()) } returns emptyList()
         every { transactionRepository.saveAll(capture(savedTransactions)) } answers { firstArg() }
         every { installmentPlanRepository.findAll() } returns emptyList()
+        every { fixedExpenseRepository.findAll() } returns emptyList()
     }
 
     @Test
@@ -80,7 +89,7 @@ class CardStatementImportServiceTest {
     }
 
     @Test
-    fun `일시불 기간의 거래만 읽어 중복을 비교한다`() {
+    fun `일시불 기간이 걸친 달 전체의 거래를 읽어 비교한다`() {
         // given
         every { categoryRepository.findAll() } returns listOf(uncategorized)
 
@@ -93,7 +102,8 @@ class CardStatementImportServiceTest {
         )
 
         // then
-        verify { transactionRepository.search(TransactionSearchCriteria(LocalDate.of(2026, 8, 26), LocalDate.of(2026, 11, 25))) }
+        // 고정비 자동 기록은 납부일(예: 11/30)에 있어 이용내역 기간 밖일 수 있다
+        verify { transactionRepository.search(TransactionSearchCriteria(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 11, 30))) }
     }
 
     @Test
@@ -149,5 +159,34 @@ class CardStatementImportServiceTest {
         assertThat(result.importedTransactionCount).isEqualTo(1)
         assertThat(result.duplicates).hasSize(1)
         assertThat(result.unprocessed.single().reason).contains("취소")
+    }
+
+    @Test
+    fun `고정비와 같은 사용처는 고정비 거래로 저장하고 자동 기록은 실제값으로 고쳐 저장한다`() {
+        // given
+        every { categoryRepository.findAll() } returns listOf(uncategorized)
+        val insurance = fixedExpense(merchant = "OO보험", amount = 15_000, dayOfMonth = 25, startMonth = YearMonth.of(2026, 9), id = 3)
+        val scheduledOctober = insurance.occurrenceIn(YearMonth.of(2026, 10)).assignId(TransactionId(40))
+        every { fixedExpenseRepository.findAll() } returns listOf(insurance)
+        every { transactionRepository.search(any()) } returns listOf(scheduledOctober)
+        val corrected = slot<Transaction>()
+        every { transactionRepository.save(capture(corrected)) } answers { corrected.captured }
+
+        // when
+        val result = service.importStatement(
+            cardStatement(
+                cardEntry(approvalNumber = "1", merchant = "OO보험", amount = 15_000, spentDate = LocalDate.of(2026, 9, 26)),
+                cardEntry(approvalNumber = "2", merchant = "OO보험", amount = 15_000, spentDate = LocalDate.of(2026, 10, 27)),
+            ),
+        )
+
+        // then
+        assertThat(savedTransactions.single().map { it.kind to it.spentDate })
+            .containsExactly(ExpenseKind.FIXED to LocalDate.of(2026, 9, 26))
+        assertThat(corrected.captured.id).isEqualTo(TransactionId(40))
+        assertThat(corrected.captured.spentDate).isEqualTo(LocalDate.of(2026, 10, 27))
+        assertThat(result.fixedExpenseMatches).hasSize(2)
+        assertThat(result.importedTransactionCount).isZero()
+        assertThat(savedTransactions.single().map { it.fixedExpenseId }).containsOnly(FixedExpenseId(3))
     }
 }

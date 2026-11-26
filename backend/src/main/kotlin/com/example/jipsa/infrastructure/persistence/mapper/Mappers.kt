@@ -89,8 +89,15 @@ object TransactionMapper {
         tags = transaction.tags.names.toMutableList(),
     )
 
-    /** 종류와 출처는 바뀌지 않으므로 반영하지 않는다. */
+    /**
+     * 종류와 출처도 반영한다. 일반 지출이 고정비로 전환되면 종류와 고정비 출처가 바뀐다 (PRD 3.2.1).
+     * 출처를 지우는 전환은 없지만, 도메인이 정한 값을 그대로 옮기는 편이 규칙을 두 곳에 두지 않는다.
+     */
     fun applyTo(entity: TransactionJpaEntity, transaction: Transaction) {
+        entity.kind = transaction.kind
+        entity.fixedExpenseId = transaction.fixedExpenseId?.value
+        entity.installmentPlanId = transaction.installmentPlanId?.value
+        entity.installmentSequence = transaction.installmentSequence
         entity.categoryId = transaction.categoryId.value
         entity.amount = transaction.amount.amount
         entity.merchant = transaction.merchant

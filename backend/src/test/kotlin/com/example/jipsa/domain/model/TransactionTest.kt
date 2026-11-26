@@ -221,6 +221,46 @@ class TransactionTest {
         }
     }
 
+    @Nested
+    @DisplayName("고정비로 전환 (PRD 3.2.1)")
+    inner class ConvertToFixed {
+
+        @Test
+        fun `일반 지출은 값을 그대로 두고 고정비 거래가 된다`() {
+            // given
+            val general = generalTransaction(amount = 15_000, merchant = "OO보험", memo = "자동이체", id = 4)
+
+            // when
+            val converted = general.convertToFixedOccurrence(FixedExpenseId(9))
+
+            // then
+            assertThat(converted.kind).isEqualTo(ExpenseKind.FIXED)
+            assertThat(converted.fixedExpenseId).isEqualTo(FixedExpenseId(9))
+            assertThat(converted.id).isEqualTo(TransactionId(4))
+            assertThat(listOf(converted.amount, converted.spentDate, converted.merchant, converted.memo, converted.paymentMethod))
+                .containsExactly(general.amount, general.spentDate, general.merchant, general.memo, general.paymentMethod)
+            assertThat(converted.tags).isEqualTo(general.tags)
+            assertThat(converted.isDeletable).isFalse()
+        }
+
+        @Test
+        fun `할부 회차는 고정비로 전환할 수 없다`() {
+            val part = installmentPlan().scheduleParts().first()
+
+            assertThatThrownBy { part.convertToFixedOccurrence(FixedExpenseId(9)) }
+                .isInstanceOf(DomainStateException::class.java)
+                .hasMessageContaining("일반 지출만")
+        }
+
+        @Test
+        fun `이미 고정비 거래면 다시 전환할 수 없다`() {
+            val occurrence = fixedExpense().occurrenceIn(YearMonth.of(2026, 11))
+
+            assertThatThrownBy { occurrence.convertToFixedOccurrence(FixedExpenseId(9)) }
+                .isInstanceOf(DomainStateException::class.java)
+        }
+    }
+
     @Test
     fun `동일성은 식별자로 판단한다`() {
         assertThat(generalTransaction(amount = 1_000, id = 1)).isEqualTo(generalTransaction(amount = 2_000, id = 1))

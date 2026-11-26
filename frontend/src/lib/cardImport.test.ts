@@ -22,6 +22,8 @@ function result(overrides: Partial<CardImportResult> = {}): CardImportResult {
     importedCount: 82,
     importedTransactionCount: 81,
     importedInstallmentPlanCount: 1,
+    fixedExpenseCount: 0,
+    fixedExpenses: [],
     duplicateCount: 0,
     uncategorizedCategoryId: 13,
     uncategorizedCount: 0,

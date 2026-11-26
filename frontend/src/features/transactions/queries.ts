@@ -46,6 +46,15 @@ export function useRegisterExpense() {
   })
 }
 
+/** 일반 지출을 고정비로 전환한다. 같은 사용처의 다른 달 거래도 바뀌므로 지출 영역 전체를 새로 읽는다. */
+export function useConvertToFixedExpense() {
+  const invalidate = useInvalidateExpenses()
+  return useMutation({
+    mutationFn: (transactionId: number) => fixedExpenseApi.convertFromTransaction(transactionId),
+    onSuccess: invalidate,
+  })
+}
+
 export function useUpdateTransaction() {
   const invalidate = useInvalidateExpenses()
   return useMutation({

@@ -4,9 +4,13 @@ import com.example.jipsa.domain.exception.InvariantViolationException
 import com.example.jipsa.domain.model.CardStatementEntry
 import com.example.jipsa.domain.model.CategoryId
 import com.example.jipsa.domain.model.ExpenseKind
+import com.example.jipsa.domain.model.FixedExpenseId
+import com.example.jipsa.domain.model.Transaction
+import com.example.jipsa.domain.model.TransactionId
 import com.example.jipsa.fixture.cardEntry
 import com.example.jipsa.fixture.cardStatement
 import com.example.jipsa.fixture.category
+import com.example.jipsa.fixture.fixedExpense
 import com.example.jipsa.fixture.generalTransaction
 import com.example.jipsa.fixture.installmentPlan
 import com.example.jipsa.fixture.won
@@ -377,6 +381,140 @@ class CardStatementImporterTest {
 
             // then
             assertThat(result.installmentPlans).hasSize(1)
+        }
+    }
+
+    @Nested
+    @DisplayName("CardStatementImporter - 고정비 (PRD 3.5)")
+    inner class FixedExpenses {
+
+        private val uncategorized = CategoryId(13)
+        private val importer = CardStatementImporter(MerchantCategoryClassifier(listOf(CategoryRule("식비", listOf("보험")))))
+        private val insurance = fixedExpense(
+            merchant = "OO보험", amount = 15_000, dayOfMonth = 25, startMonth = YearMonth.of(2026, 9), categoryId = 9,
+            paymentMethod = "삼성카드", id = 3,
+        )
+
+        private fun plan(existing: List<Transaction>, vararg entries: CardStatementEntry): CardImportPlan =
+            importer.plan(cardStatement(*entries), emptyList(), uncategorized, existing, emptyList(), listOf(insurance))
+
+        private fun insurancePaid(day: LocalDate, amount: Long = 15_000, approvalNumber: String = "1") =
+            cardEntry(approvalNumber = approvalNumber, merchant = "ＯＯ 보험", amount = amount, spentDate = day)
+
+        @Test
+        fun `고정비와 사용처가 같으면 카드의 날짜·금액과 고정비의 카테고리로 고정비 거래를 만든다`() {
+            // when
+            val result = plan(emptyList(), insurancePaid(LocalDate.of(2026, 10, 27), amount = 15_920))
+
+            // then
+            val occurrence = result.fixedExpenseOccurrences.single()
+            assertThat(occurrence.kind).isEqualTo(ExpenseKind.FIXED)
+            assertThat(occurrence.fixedExpenseId).isEqualTo(FixedExpenseId(3))
+            assertThat(occurrence.spentDate).isEqualTo(LocalDate.of(2026, 10, 27))
+            assertThat(occurrence.amount).isEqualTo(won(15_920))
+            assertThat(occurrence.categoryId).isEqualTo(CategoryId(9))
+            assertThat(result.transactions).isEmpty()
+            assertThat(result.uncategorized).isEmpty()
+            assertThat(result.fixedExpenseMatches).hasSize(1)
+        }
+
+        @Test
+        fun `그 달에 자동 기록만 있으면 그 거래를 실제값으로 고친다`() {
+            // given
+            val scheduled = insurance.occurrenceIn(YearMonth.of(2026, 10)).assignId(TransactionId(40))
+
+            // when
+            val result = plan(listOf(scheduled), insurancePaid(LocalDate.of(2026, 10, 27), amount = 15_920))
+
+            // then
+            val corrected = result.fixedExpenseCorrections.single()
+            assertThat(corrected.id).isEqualTo(TransactionId(40))
+            assertThat(corrected.spentDate).isEqualTo(LocalDate.of(2026, 10, 27))
+            assertThat(corrected.amount).isEqualTo(won(15_920))
+            assertThat(result.fixedExpenseOccurrences).isEmpty()
+            assertThat(result.fixedExpenseMatches).hasSize(1)
+        }
+
+        @Test
+        fun `그 달에 이미 실제값의 고정비 거래가 있으면 일반 지출로 넣는다`() {
+            // given
+            val actual = insurance.actualOccurrence(LocalDate.of(2026, 10, 27), won(15_920)).assignId(TransactionId(40))
+
+            // when
+            val result = plan(listOf(actual), insurancePaid(LocalDate.of(2026, 10, 20), amount = 3_000))
+
+            // then
+            assertThat(result.transactions.single().kind).isEqualTo(ExpenseKind.GENERAL)
+            assertThat(result.fixedExpenseMatches).isEmpty()
+            assertThat(result.fixedExpenseCorrections).isEmpty()
+        }
+
+        @Test
+        fun `한 달에 같은 사용처가 둘이면 먼저 나온 것만 고정비 거래다`() {
+            val result = plan(
+                emptyList(),
+                insurancePaid(LocalDate.of(2026, 10, 25), approvalNumber = "1"),
+                insurancePaid(LocalDate.of(2026, 10, 26), approvalNumber = "2", amount = 9_000),
+                insurancePaid(LocalDate.of(2026, 11, 25), approvalNumber = "3"),
+            )
+
+            assertThat(result.fixedExpenseOccurrences.map { it.spentDate })
+                .containsExactly(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 11, 25))
+            assertThat(result.transactions.map { it.spentDate }).containsExactly(LocalDate.of(2026, 10, 26))
+        }
+
+        @Test
+        fun `고정비 기간 밖의 달이면 일반 지출이다`() {
+            val result = plan(emptyList(), insurancePaid(LocalDate.of(2026, 8, 25)))
+
+            assertThat(result.transactions.single().kind).isEqualTo(ExpenseKind.GENERAL)
+            assertThat(result.fixedExpenseMatches).isEmpty()
+        }
+
+        @Test
+        fun `할부는 고정비로 보지 않는다`() {
+            val result = plan(
+                emptyList(),
+                cardEntry(merchant = "OO보험", amount = 30_000, installmentMonths = 3, spentDate = LocalDate.of(2026, 10, 25)),
+            )
+
+            assertThat(result.installmentPlans).hasSize(1)
+            assertThat(result.fixedExpenseMatches).isEmpty()
+        }
+
+        @Test
+        fun `자동 기록과 똑같은 구매는 중복이고 같은 달의 다른 구매가 그 기록을 고치지 않는다`() {
+            // given
+            val scheduled = insurance.occurrenceIn(YearMonth.of(2026, 10)).assignId(TransactionId(40))
+
+            // when
+            val result = plan(
+                listOf(scheduled),
+                cardEntry(approvalNumber = "1", merchant = "OO보험", amount = 15_000, spentDate = LocalDate.of(2026, 10, 25)),
+                insurancePaid(LocalDate.of(2026, 10, 26), approvalNumber = "2", amount = 9_000),
+            )
+
+            // then
+            assertThat(result.duplicates).hasSize(1)
+            assertThat(result.fixedExpenseCorrections).isEmpty()
+            assertThat(result.transactions.single().amount).isEqualTo(won(9_000))
+        }
+
+        @Test
+        fun `고정비가 아닌 사용처의 중복은 고정비 판단에 영향이 없다`() {
+            // given
+            val existing = Transaction.createGeneral(CategoryId(1), won(8_000), "OO김밥", LocalDate.of(2026, 10, 10), paymentMethod = "삼성카드")
+
+            // when
+            val result = plan(
+                listOf(existing),
+                cardEntry(approvalNumber = "1", merchant = "OO김밥", spentDate = LocalDate.of(2026, 10, 10)),
+                insurancePaid(LocalDate.of(2026, 10, 25), approvalNumber = "2"),
+            )
+
+            // then
+            assertThat(result.duplicates).hasSize(1)
+            assertThat(result.fixedExpenseOccurrences).hasSize(1)
         }
     }
 }

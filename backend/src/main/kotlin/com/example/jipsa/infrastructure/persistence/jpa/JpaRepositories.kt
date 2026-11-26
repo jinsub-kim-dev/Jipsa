@@ -36,6 +36,8 @@ interface TransactionJpaRepository : JpaRepository<TransactionJpaEntity, Long> {
 
     fun existsByCategoryId(categoryId: Long): Boolean
 
+    fun findAllByKindOrderBySpentDateAscIdAsc(kind: ExpenseKind): List<TransactionJpaEntity>
+
     /**
      * 검색. 값이 `null` 인 조건은 적용하지 않는다.
      *

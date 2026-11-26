@@ -13,6 +13,8 @@ const result: CardImportResult = {
   importedCount: 82,
   importedTransactionCount: 81,
   importedInstallmentPlanCount: 1,
+  fixedExpenseCount: 1,
+  fixedExpenses: [{ spentDate: '2026-10-27', merchant: 'OO보험', amount: 15_000 }],
   duplicateCount: 0,
   uncategorizedCategoryId: 13,
   uncategorizedCount: 1,
@@ -47,6 +49,7 @@ describe('CardImportResultCard - 가져오기 결과', () => {
 
     expect(screen.getByText('전체 줄').nextSibling).toHaveTextContent('86')
     expect(screen.getByText('추가').nextSibling).toHaveTextContent('82할부 1건 포함')
+    expect(screen.getByText('고정비').nextSibling).toHaveTextContent('1')
     expect(screen.getByText('미분류').nextSibling).toHaveTextContent('1')
     expect(screen.getByText('처리 안 됨').nextSibling).toHaveTextContent('3')
     expect(screen.getByText(/확인할 내역 있음/)).toBeInTheDocument()
@@ -75,6 +78,16 @@ describe('CardImportResultCard - 가져오기 결과', () => {
       'href',
       '/transactions?categoryId=13',
     )
+  })
+
+  it('고정비는 펼치면 고정비 거래가 된 내역을 보여준다', async () => {
+    renderWithRouter(
+      <CardImportResultCard job={{ id: '1', fileName: '내역.xlsx', status: 'done', result }} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /고정비 1건/ }))
+
+    expect(screen.getByText('OO보험')).toBeInTheDocument()
   })
 
   it('실패한 파일은 서버가 준 사유를 보여준다', () => {

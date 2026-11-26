@@ -1,6 +1,7 @@
 package com.example.jipsa.domain.model
 
 import com.example.jipsa.domain.exception.checkInvariant
+import java.text.Normalizer
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -38,6 +39,15 @@ internal object ExpenseText {
 
     /** 빈 문자열은 "값 없음" 으로 정규화한다. 공백 메모가 저장되지 않게 한다. */
     fun normalizeOptional(value: String?): String? = value?.trim()?.takeIf(String::isNotEmpty)
+
+    /**
+     * 두 사용처가 같은 곳인지. **공백·대소문자·전각을 무시한다** (PRD 3.2).
+     * 카드사마다 "CU OO점" / "CUOO점", "ＳＫ" / "SK" 처럼 같은 가게를 다르게 적는다.
+     */
+    fun isSameMerchant(a: String, b: String): Boolean = merchantKey(a) == merchantKey(b)
+
+    private fun merchantKey(merchant: String): String =
+        Normalizer.normalize(merchant, Normalizer.Form.NFKC).filterNot(Char::isWhitespace).lowercase()
 }
 
 /**

@@ -10,7 +10,8 @@ import java.time.LocalDate
  * ## 지출 종류와 출처
  * 종류마다 만들어지는 길이 하나뿐이고, 출처 식별자가 그 길을 증명한다.
  * - [ExpenseKind.GENERAL]: 출처 없음. [createGeneral] 로 사용자가 직접 등록한다.
- * - [ExpenseKind.FIXED]: [fixedExpenseId] 필수. [createFixedOccurrence] 로 고정비 기록 때 만든다.
+ * - [ExpenseKind.FIXED]: [fixedExpenseId] 필수. [createFixedOccurrence] 로 고정비 기록 때 만들거나,
+ *   일반 지출을 [convertToFixedOccurrence] 로 바꿔 만든다.
  * - [ExpenseKind.INSTALLMENT]: [installmentPlanId] 와 [installmentSequence] 필수.
  *   [createInstallmentPart] 로 할부 등록 때 만든다.
  *
@@ -100,6 +101,32 @@ class Transaction private constructor(
         rebuild(paymentMethod = ExpenseText.normalizeOptional(newPaymentMethod))
 
     fun assignId(assignedId: TransactionId): Transaction = rebuild(id = assignedId)
+
+    /**
+     * 이 일반 지출을 [fixedExpenseId] 고정비의 거래로 바꾼다 (PRD 3.2.1).
+     *
+     * 소비일·금액·사용처·카테고리·태그·메모·결제 수단은 그대로 둔다. 실제로 나간 날과 금액이기 때문이다.
+     * 할부 회차는 할부 계획에 묶여 있고, 고정비 거래는 이미 출처가 있으므로 일반 지출만 바꿀 수 있다.
+     */
+    fun convertToFixedOccurrence(fixedExpenseId: FixedExpenseId): Transaction {
+        if (kind != ExpenseKind.GENERAL) {
+            throw DomainStateException("일반 지출만 고정비로 전환할 수 있습니다. 지금 종류: $kind, 사용처: $merchant")
+        }
+        return Transaction(
+            id = id,
+            kind = ExpenseKind.FIXED,
+            categoryId = categoryId,
+            amount = amount,
+            merchant = merchant,
+            spentDate = spentDate,
+            tags = tags,
+            memo = memo,
+            paymentMethod = paymentMethod,
+            fixedExpenseId = fixedExpenseId,
+            installmentPlanId = null,
+            installmentSequence = null,
+        )
+    }
 
     private fun rejectIfInstallmentPart(field: String) {
         if (isInstallmentPart) {

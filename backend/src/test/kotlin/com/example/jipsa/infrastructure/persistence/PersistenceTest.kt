@@ -134,6 +134,26 @@ class PersistenceTest : AbstractPersistenceTest() {
         }
 
         @Test
+        fun `일반 지출을 고정비로 전환하면 종류와 고정비 출처가 저장된다`() {
+            // given
+            val insurance = savedCategory("보험")
+            val paid = general(insurance, "OO보험", 15_000, november.atDay(25))
+            val other = general(insurance, "OO김밥", 9_000, november.atDay(3))
+            val fixed = fixedExpenseRepository.save(FixedExpense.defineFrom(paid, november))
+            transactionRepository.save(paid.convertToFixedOccurrence(fixed.id!!))
+            flushAndClear()
+
+            // when
+            val found = transactionRepository.findById(paid.id!!)!!
+
+            // then
+            assertThat(found.kind).isEqualTo(ExpenseKind.FIXED)
+            assertThat(found.fixedExpenseId).isEqualTo(fixed.id)
+            assertThat(transactionRepository.findAllByKind(ExpenseKind.GENERAL).map { it.id }).contains(other.id).doesNotContain(paid.id)
+            assertThat(transactionRepository.findRecordedFixedExpenseIds(november)).containsExactly(fixed.id)
+        }
+
+        @Test
         fun `삭제하면 태그도 함께 사라진다`() {
             val food = savedCategory()
             val saved = general(food, "김밥천국", 9_000, november.atDay(1), "점심")

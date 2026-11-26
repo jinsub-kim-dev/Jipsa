@@ -1,6 +1,7 @@
 package com.example.jipsa.domain.repository
 
 import com.example.jipsa.domain.model.CategoryId
+import com.example.jipsa.domain.model.ExpenseKind
 import com.example.jipsa.domain.model.FixedExpenseId
 import com.example.jipsa.domain.model.InstallmentPlanId
 import com.example.jipsa.domain.model.Transaction
@@ -20,6 +21,9 @@ interface TransactionRepository {
 
     /** 조건에 맞는 거래. 소비일 내림차순, 같으면 ID 내림차순(최근 등록 먼저). */
     fun search(criteria: TransactionSearchCriteria): List<Transaction>
+
+    /** [kind] 종류의 거래 전체. 소비일 오름차순. 고정비로 전환할 때 같은 사용처를 찾는 데 쓴다. */
+    fun findAllByKind(kind: ExpenseKind): List<Transaction>
 
     fun deleteById(id: TransactionId)
 

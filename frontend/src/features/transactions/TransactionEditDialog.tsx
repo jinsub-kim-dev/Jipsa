@@ -13,7 +13,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { useCategories } from '@/features/categories/queries'
+import { conversionConfirmMessage, conversionSummary } from '@/lib/fixedExpenseConversion'
 import { expenseKindLabel } from '@/lib/format'
+import type { FixedExpenseConversionResult } from '@/types/api'
 import type { Transaction } from '@/types/domain'
 import {
   formatAmountInput,
@@ -21,7 +23,7 @@ import {
   toUpdateRequest,
   type TransactionEditValues,
 } from './expenseForm'
-import { useRemoveTransaction, useUpdateTransaction } from './queries'
+import { useConvertToFixedExpense, useRemoveTransaction, useUpdateTransaction } from './queries'
 import { TagInput } from './TagInput'
 
 /**
@@ -39,17 +41,60 @@ export function TransactionEditDialog({
     <Dialog open={transaction !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         {transaction && (
-          <EditForm key={transaction.id} transaction={transaction} onClose={onClose} />
+          <EditBody key={transaction.id} transaction={transaction} onClose={onClose} />
         )}
       </DialogContent>
     </Dialog>
   )
 }
 
-function EditForm({ transaction, onClose }: { transaction: Transaction; onClose: () => void }) {
+/** 고정비로 전환하면 수정 폼 대신 결과를 보여준다. 거래의 종류가 바뀌어 같은 폼을 이어 쓸 수 없다. */
+function EditBody({ transaction, onClose }: { transaction: Transaction; onClose: () => void }) {
+  const [converted, setConverted] = useState<FixedExpenseConversionResult | null>(null)
+  if (converted) return <ConversionResult result={converted} onClose={onClose} />
+  return <EditForm transaction={transaction} onClose={onClose} onConverted={setConverted} />
+}
+
+function ConversionResult({
+  result,
+  onClose,
+}: {
+  result: FixedExpenseConversionResult
+  onClose: () => void
+}) {
+  return (
+    <div className="grid gap-4">
+      <DialogHeader>
+        <DialogTitle>고정비로 전환했어요</DialogTitle>
+        <DialogDescription>고정비·할부 메뉴에서 확인하고 종료할 수 있어요.</DialogDescription>
+      </DialogHeader>
+      <ul className="grid gap-1 text-sm" aria-label="전환 결과">
+        {conversionSummary(result).map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <DialogFooter>
+        <Button type="button" onClick={onClose}>
+          닫기
+        </Button>
+      </DialogFooter>
+    </div>
+  )
+}
+
+function EditForm({
+  transaction,
+  onClose,
+  onConverted,
+}: {
+  transaction: Transaction
+  onClose: () => void
+  onConverted: (result: FixedExpenseConversionResult) => void
+}) {
   const { data: categories = [] } = useCategories()
   const update = useUpdateTransaction()
   const remove = useRemoveTransaction()
+  const convert = useConvertToFixedExpense()
   const [values, setValues] = useState<TransactionEditValues>(() => toEditValues(transaction))
   const set = <K extends keyof TransactionEditValues>(key: K, value: TransactionEditValues[K]) =>
     setValues((previous) => ({ ...previous, [key]: value }))
@@ -66,8 +111,14 @@ function EditForm({ transaction, onClose }: { transaction: Transaction; onClose:
     await remove.mutateAsync(transaction.id).then(onClose, () => undefined)
   }
 
-  const error = [update.error, remove.error].find((value) => value instanceof ApiError) as
-    ApiError | undefined
+  const onConvert = async () => {
+    if (!window.confirm(conversionConfirmMessage(transaction.merchant))) return
+    await convert.mutateAsync(transaction.id).then(onConverted, () => undefined)
+  }
+
+  const error = [update.error, remove.error, convert.error].find(
+    (value) => value instanceof ApiError,
+  ) as ApiError | undefined
   const lockReason =
     transaction.kind === 'INSTALLMENT'
       ? '할부 회차의 금액과 날짜는 바꿀 수 없어요. 바꾸려면 고정비·할부 메뉴에서 해지 후 다시 등록하세요.'
@@ -155,14 +206,26 @@ function EditForm({ transaction, onClose }: { transaction: Transaction; onClose:
       )}
       <DialogFooter className="sm:justify-between">
         {transaction.deletable ? (
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={onDelete}
-            disabled={remove.isPending}
-          >
-            삭제
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={onDelete}
+              disabled={remove.isPending}
+            >
+              삭제
+            </Button>
+            {transaction.kind === 'GENERAL' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onConvert}
+                disabled={convert.isPending}
+              >
+                고정비로 전환
+              </Button>
+            )}
+          </div>
         ) : (
           <span className="text-muted-foreground self-center text-xs">
             {transaction.kind === 'FIXED'

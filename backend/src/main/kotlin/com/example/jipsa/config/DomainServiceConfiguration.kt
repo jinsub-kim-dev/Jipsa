@@ -3,6 +3,7 @@ package com.example.jipsa.config
 import com.example.jipsa.domain.service.CardStatementImporter
 import com.example.jipsa.domain.service.CategoryTrendAnalyzer
 import com.example.jipsa.domain.service.CommitmentForecaster
+import com.example.jipsa.domain.service.FixedExpenseConverter
 import com.example.jipsa.domain.service.FixedExpenseRecorder
 import com.example.jipsa.domain.service.MerchantCategoryClassifier
 import com.example.jipsa.domain.service.SpendingInsightAnalyzer
@@ -26,6 +27,9 @@ class DomainServiceConfiguration {
 
     @Bean
     fun fixedExpenseRecorder(): FixedExpenseRecorder = FixedExpenseRecorder()
+
+    @Bean
+    fun fixedExpenseConverter(): FixedExpenseConverter = FixedExpenseConverter()
 
     @Bean
     fun commitmentForecaster(): CommitmentForecaster = CommitmentForecaster()

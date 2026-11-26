@@ -90,6 +90,7 @@ cd frontend && npm run check
 | `POST /api/transactions` | 일반 지출 등록 |
 | `PATCH /api/transactions/{id}` · `DELETE` | 수정(바뀐 필드만) · 삭제(일반 지출만) |
 | `GET /api/fixed-expenses?month=` · `POST` | 고정비 목록(그 달 납부일 포함) · 등록 |
+| `POST /api/fixed-expenses/conversions` | 일반 지출을 고정비로 전환(같은 사용처의 다른 달 일반 지출도 함께) |
 | `POST /api/fixed-expenses/{id}/terminate` | 고정비 종료 |
 | `POST /api/fixed-expenses/records?month=` | 그 달 고정비 기록(멱등) |
 | `GET /api/installment-plans?month=` · `POST` · `DELETE /{id}` | 할부 목록(진행 상황 포함) · 등록 · 해지 |

@@ -2,6 +2,7 @@ package com.example.jipsa.infrastructure.persistence.adapter
 
 import com.example.jipsa.domain.model.Category
 import com.example.jipsa.domain.model.CategoryId
+import com.example.jipsa.domain.model.ExpenseKind
 import com.example.jipsa.domain.model.FixedExpense
 import com.example.jipsa.domain.model.FixedExpenseId
 import com.example.jipsa.domain.model.InstallmentPlan
@@ -92,6 +93,9 @@ class TransactionRepositoryAdapter(
             keyword = criteria.keyword?.trim()?.takeIf(String::isNotEmpty)?.let { "%${it.lowercase()}%" },
         )
         .map(TransactionMapper::toDomain)
+
+    override fun findAllByKind(kind: ExpenseKind): List<Transaction> =
+        jpaRepository.findAllByKindOrderBySpentDateAscIdAsc(kind).map(TransactionMapper::toDomain)
 
     override fun deleteById(id: TransactionId) = jpaRepository.deleteById(id.value)
 

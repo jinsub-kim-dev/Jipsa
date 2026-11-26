@@ -16,8 +16,10 @@ interface CardStatementImportUseCase {
 }
 
 data class CardImportResult(
-    /** 새로 만든 일반 지출 수. */
+    /** 새로 만든 일반 지출 수. 고정비 거래는 [fixedExpenseMatches] 에 따로 센다. */
     val importedTransactionCount: Int,
+    /** 등록된 고정비의 그 달 거래가 된 구매. 새로 만들었거나 자동 기록을 실제값으로 고쳤다. */
+    val fixedExpenseMatches: List<CardPurchase>,
     /** 새로 등록한 할부 계획 수. 회차 거래는 세지 않는다. */
     val importedInstallmentPlanCount: Int,
     /** 이미 있어서 건너뛴 구매. */
