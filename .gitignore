@@ -1,0 +1,26 @@
+### macOS ###
+.DS_Store
+._*
+
+### Gradle / Build ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IDE ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+out/
+
+### Kotlin ###
+.kotlin/
+
+### 로컬 도구 ###
+.claude/launch.json
+
+### 환경 변수 (로컬 비밀 값) ###
+.env
+.env.local

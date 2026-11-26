@@ -1,0 +1,42 @@
+import { apiClient } from './client'
+import type { RegisterFixedExpenseRequest, RegisterInstallmentPlanRequest } from '@/types/api'
+import type { FixedExpense, InstallmentPlan, YearMonthString } from '@/types/domain'
+
+export const fixedExpenseApi = {
+  async list(month: YearMonthString): Promise<FixedExpense[]> {
+    const { data } = await apiClient.get<FixedExpense[]>('/api/fixed-expenses', {
+      params: { month },
+    })
+    return data
+  },
+
+  async register(request: RegisterFixedExpenseRequest): Promise<FixedExpense> {
+    const { data } = await apiClient.post<FixedExpense>('/api/fixed-expenses', request)
+    return data
+  },
+
+  async terminate(id: number, lastMonth: YearMonthString): Promise<FixedExpense> {
+    const { data } = await apiClient.post<FixedExpense>(`/api/fixed-expenses/${id}/terminate`, {
+      lastMonth,
+    })
+    return data
+  },
+}
+
+export const installmentPlanApi = {
+  async list(month: YearMonthString): Promise<InstallmentPlan[]> {
+    const { data } = await apiClient.get<InstallmentPlan[]>('/api/installment-plans', {
+      params: { month },
+    })
+    return data
+  },
+
+  async register(request: RegisterInstallmentPlanRequest): Promise<InstallmentPlan> {
+    const { data } = await apiClient.post<InstallmentPlan>('/api/installment-plans', request)
+    return data
+  },
+
+  async cancel(id: number): Promise<void> {
+    await apiClient.delete(`/api/installment-plans/${id}`)
+  },
+}

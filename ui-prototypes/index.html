@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jipsa UI 후보</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  body { margin: 0; font-family: Pretendard, -apple-system, sans-serif; background: #F4F6FA; color: #111827; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+  h1 { margin: 0 0 8px; font-size: 28px; }
+  .lead { color: #6B7280; margin: 0 0 32px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  a.card { display: flex; flex-direction: column; background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; padding: 22px; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
+  a.card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+  .thumb { height: 120px; border-radius: 10px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; font-size: 42px; }
+  .label { font-size: 12px; font-weight: 700; color: #2563EB; }
+  h2 { margin: 4px 0 8px; font-size: 19px; }
+  p { color: #4B5563; font-size: 14px; line-height: 1.6; margin: 0 0 12px; }
+  ul { margin: 0; padding-left: 18px; font-size: 13px; color: #4B5563; line-height: 1.8; }
+  .pro { color: #059669; } .con { color: #DC2626; }
+  .note { margin-top: 32px; background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 20px 22px; font-size: 14px; line-height: 1.8; color: #374151; }
+  .note code { background: #F3F4F6; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Jipsa 가계부 · UI 후보</h1>
+  <p class="lead">같은 더미데이터(2026년 6~11월, 약 480건)로 만든 세 가지 방향입니다. 지출 종류(일반 지출 / 고정비 / 할부), 카테고리, 태그를 모두 반영했어요.</p>
+  <div class="grid">
+    <a class="card" href="a-dashboard.html">
+      <div class="thumb" style="background:linear-gradient(135deg,#DBEAFE,#E0E7FF)">📊</div>
+      <div class="label">후보 A</div><h2>대시보드형</h2>
+      <p>사이드바 + KPI 카드 + 차트 + 거래 테이블. 한 화면에서 이번 달 상태와 내역을 모두 봅니다.</p>
+      <ul><li class="pro">가장 익숙하고 확장하기 쉬움</li><li class="pro">태그 클릭 → 내역 필터, 지출 추가 모달 포함</li><li class="con">정보 밀도가 높아 "패턴"이 덜 도드라짐</li></ul>
+    </a>
+    <a class="card" href="b-calendar.html">
+      <div class="thumb" style="background:linear-gradient(135deg,#D1FAE5,#FEF3C7)">📅</div>
+      <div class="label">후보 B</div><h2>캘린더형</h2>
+      <p>월 달력이 메인. 날짜별 지출 강도, 고정비·할부 결제일, 남은 고정 지출 일정을 한눈에.</p>
+      <ul><li class="pro">입력·확인이 일상적으로 편함 (자연어 빠른 입력)</li><li class="pro">태그/종류 하이라이트로 "언제" 쓰는지 보임</li><li class="con">월 간 비교 분석은 약함 → 별도 분석 탭 필요</li></ul>
+    </a>
+    <a class="card" href="c-report.html">
+      <div class="thumb" style="background:linear-gradient(135deg,#0B1020,#24304B);color:#7DD3FC">📈</div>
+      <div class="label">후보 C</div><h2>패턴 리포트형</h2>
+      <p>자동 인사이트 문장, 카테고리×월 히트맵, 요일 패턴, 태그 증감, 약정 지출 전망.</p>
+      <ul><li class="pro">"월별 소비 패턴 분석" 목적에 가장 직접적</li><li class="pro">할부 종료 시점까지 미래 전망 제공</li><li class="con">입력/내역 관리 화면은 따로 필요</li></ul>
+    </a>
+  </div>
+  <div class="note">
+    <b>추천 조합</b> — 실제 앱은 하나만 고르기보다 <b>B(캘린더) = 기록/일상 화면</b>, <b>C(리포트) = 분석 화면</b>으로 탭을 나누고, A의 거래 테이블·추가 모달을 공통 컴포넌트로 쓰는 구성이 목적(월별 패턴 분석)에 잘 맞습니다.<br>
+    <b>데이터 모델</b> — 더미데이터는 <code>{ date, amount, merchant, kind: general|fixed|installment, category, tags[], card, installment?: { current, total, principal } }</code> 구조입니다. 공통 파일: <code>data.js</code>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,56 @@
+# 로컬 개발 프로필 (기본값).
+#
+# 목표는 "받아서 바로 뜨는 것" 이다. 환경 변수를 하나도 설정하지 않아도
+# docker-compose 로 띄운 MySQL 에 붙는다.
+jipsa:
+  db:
+    host: ${DB_HOST:localhost}
+    # docker-compose 가 호스트에 노출하는 포트다(컨테이너 안쪽은 3306).
+    # 표준 포트와 Beetle 의 포트(13306)를 피한다. 컨테이너로 뜨는 백엔드는 compose 가
+    # DB_PORT=3306 을 주므로 영향을 받지 않는다.
+    port: ${DB_PORT:13307}
+    name: ${DB_NAME:jipsa}
+    user: ${DB_USER:jipsa}
+    password: ${DB_PASSWORD:jipsapassword}
+
+spring:
+  flyway:
+    # 로컬에서는 시드 데이터를 함께 넣는다. 손으로 데이터를 만들지 않아도
+    # 화면이 채워져 있어야 개발과 확인이 빠르다.
+    locations: classpath:db/migration,classpath:db/seed
+    baseline-on-migrate: true
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  # 컨테이너 없이 bootRun 으로 띄울 때의 포트. compose 가 노출하는 포트(8081)와 같게 두어
+  # 프론트엔드 개발 서버의 프록시 대상(VITE_API_PROXY_TARGET)이 바뀌지 않게 한다.
+  # 컨테이너 안쪽은 compose 가 SERVER_PORT=8080 을 준다.
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# API 문서는 개발 환경에서만 노출한다.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,beans,mappings
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example.jipsa: DEBUG

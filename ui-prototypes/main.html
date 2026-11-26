@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jipsa 가계부</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root {
+    --bg: #F4F6FA; --panel: #FFFFFF; --ink: #111827; --sub: #6B7280; --line: #E5E7EB;
+    --accent: #2563EB; --accent-rgb: 37, 99, 235; --up: #DC2626; --down: #059669;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Pretendard, -apple-system, sans-serif; background: var(--bg); color: var(--ink); display: flex; min-height: 100vh; }
+  a { color: inherit; }
+  /* sidebar */
+  .sidebar { width: 220px; background: #0F172A; color: #CBD5E1; padding: 24px 16px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
+  .logo { color: #fff; font-weight: 800; font-size: 20px; margin: 0 8px 28px; }
+  .logo span { color: #60A5FA; }
+  .nav a { display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; font-size: 14px; margin-bottom: 2px; }
+  .nav a.active { background: #1E293B; color: #fff; font-weight: 600; }
+  .nav a:not(.active):hover { background: #1E293B80; }
+  .nav .sep { height: 1px; background: #1E293B; margin: 12px 4px; }
+  .back { position: absolute; bottom: 24px; left: 24px; font-size: 12px; color: #64748B; }
+  main { flex: 1; padding: 28px 32px 60px; min-width: 0; }
+  /* header */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+  .title-row { display: flex; align-items: center; gap: 18px; }
+  .page-title { font-size: 13px; color: var(--sub); font-weight: 600; }
+  .month-nav { display: flex; align-items: center; gap: 8px; }
+  .month-nav h1 { font-size: 22px; margin: 0; min-width: 140px; text-align: center; }
+  .month-nav small { color: var(--sub); font-size: 12px; display: block; text-align: center; }
+  .icon-btn { border: 1px solid var(--line); background: #fff; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .icon-btn:disabled { opacity: .35; cursor: default; }
+  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn.sm { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
+  .view { display: none; }
+  .view.on { display: block; }
+  /* common */
+  .card { background: var(--panel); border-radius: 14px; padding: 20px; border: 1px solid var(--line); min-width: 0; }
+  .card h2 { font-size: 15px; margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card h2 small { font-weight: 400; color: var(--sub); font-size: 12px; }
+  .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .mb { margin-bottom: 16px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .muted { color: var(--sub); font-size: 13px; }
+  .up { color: var(--up); font-weight: 600; } .down { color: var(--down); font-weight: 600; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip.tag-on { background: #EEF2FF; color: #4338CA; border-color: #C7D2FE; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+  .tag { font-size: 12px; color: #4338CA; background: #EEF2FF; padding: 2px 7px; border-radius: 5px; margin-right: 4px; white-space: nowrap; }
+  .chart-box { position: relative; height: 260px; }
+  /* insight */
+  .insight { background: linear-gradient(90deg, #EFF6FF, #F5F3FF); border: 1px solid #DBEAFE; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; font-size: 15px; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start; }
+  .insight b { color: var(--accent); }
+  /* kpi */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .kpi .label { font-size: 13px; color: var(--sub); display: flex; align-items: center; gap: 6px; }
+  .kpi .value { font-size: 26px; font-weight: 800; margin: 8px 0 6px; letter-spacing: -0.5px; }
+  .kpi .delta { font-size: 12px; color: var(--sub); }
+  .kpi .bar { height: 4px; background: #F1F5F9; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+  .kpi .bar i { display: block; height: 100%; }
+  /* heatmap */
+  .heat-wrap { overflow-x: auto; }
+  .heat { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 12px; }
+  .heat th { color: var(--sub); font-weight: 500; padding: 4px; text-align: center; }
+  .heat th.cur { color: var(--accent); font-weight: 700; }
+  .heat th.row { text-align: left; white-space: nowrap; color: var(--ink); font-weight: 500; padding-right: 10px; }
+  .heat tr.hrow { cursor: pointer; }
+  .heat tr.hrow:hover th.row { color: var(--accent); }
+  .heat tr.hrow.sel th.row { color: var(--accent); font-weight: 700; }
+  .heat td { text-align: center; padding: 8px 4px; border-radius: 6px; font-variant-numeric: tabular-nums; min-width: 56px; }
+  .heat td.cur { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .heat td.delta { background: transparent; text-align: right; white-space: nowrap; min-width: 70px; }
+  .heat-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--sub); justify-content: flex-end; margin-top: 8px; }
+  .heat-legend i { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+  /* tags & installments */
+  .tag-row { display: grid; grid-template-columns: 90px 1fr 80px; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; cursor: pointer; }
+  .tag-row:hover .tname { color: var(--accent); }
+  .tag-row.sel .tname { color: var(--accent); font-weight: 700; }
+  .tag-row .track { height: 8px; background: #EEF2FF; border-radius: 4px; overflow: hidden; }
+  .tag-row .track i { display: block; height: 100%; background: #6366F1; border-radius: 4px; }
+  .tag-row .amt { text-align: right; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .ins { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .ins:last-of-type { border-bottom: 0; }
+  .ins .top { display: flex; justify-content: space-between; font-size: 14px; }
+  .ins .top b { font-weight: 600; }
+  .ins .meta { font-size: 12px; color: var(--sub); margin: 4px 0 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .progress { height: 6px; background: #F3E8FF; border-radius: 4px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: #8B5CF6; }
+  .forecast { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); }
+  .forecast h3 { font-size: 13px; margin: 0 0 4px; }
+  .forecast .note { font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 8px; }
+  .forecast .note b { color: var(--ink); font-weight: 600; }
+  /* table */
+  .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  table.tx { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.tx th { text-align: left; font-weight: 500; color: var(--sub); font-size: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  table.tx td { padding: 11px 8px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+  table.tx .amt { text-align: right; font-variant-numeric: tabular-nums; }
+  table.tx td.amt { font-weight: 600; }
+  .more { text-align: center; padding-top: 12px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .toolbar input, .toolbar select { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: #fff; }
+  .toolbar input { min-width: 200px; }
+  .summary-line { display: flex; gap: 18px; font-size: 13px; color: var(--sub); margin-bottom: 8px; flex-wrap: wrap; }
+  .summary-line b { color: var(--ink); }
+  /* calendar */
+  .cal-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .split { flex: 1; min-width: 280px; max-width: 520px; }
+  .split .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+  .split .legend { display: flex; gap: 14px; font-size: 12px; color: var(--sub); margin-top: 8px; flex-wrap: wrap; }
+  .split .legend b { color: var(--ink); font-weight: 600; }
+  .cal-layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+  .cal { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .dow, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .dow div { font-size: 12px; color: var(--sub); padding: 10px; text-align: center; border-bottom: 1px solid var(--line); }
+  .dow div:first-child { color: #DC2626; } .dow div:last-child { color: #2563EB; }
+  .day { min-height: 100px; border-right: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; padding: 8px; cursor: pointer; position: relative; display: flex; flex-direction: column; min-width: 0; }
+  .day:nth-child(7n) { border-right: 0; }
+  .day.empty { background: #FAFAFB; cursor: default; }
+  .day.future { color: #CBD5E1; }
+  .day:hover:not(.empty) { outline: 2px solid #94A3B8; outline-offset: -2px; z-index: 1; }
+  .day.sel { outline: 2px solid var(--ink); outline-offset: -2px; z-index: 2; }
+  .day.today .num { background: var(--ink); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+  .day.dim { opacity: .3; }
+  .day .num { font-size: 12px; font-weight: 600; }
+  .day .amt { margin-top: auto; font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .marks { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+  .mark { font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .mark.fixed { background: #FEF3C7; color: #B45309; }
+  .mark.installment { background: #EDE9FE; color: #6D28D9; }
+  .kbar { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .cal .heat-legend { padding: 10px 14px; border-top: 1px solid var(--line); margin: 0; }
+  .side-panel { margin-bottom: 16px; }
+  .side-panel h2 { margin-bottom: 4px; }
+  .side-panel .sub { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+  .txi { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #F3F4F6; }
+  .txi:last-child { border-bottom: 0; }
+  .txi .ic { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .txi .body { flex: 1; min-width: 0; }
+  .txi .name { font-size: 14px; font-weight: 600; }
+  .txi .meta { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .txi .price { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+  .txi .price small { display: block; font-size: 10px; font-weight: 600; }
+  .sched { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 7px 0; }
+  .sched .d { width: 38px; color: var(--sub); font-size: 12px; }
+  .sched .n { flex: 1; min-width: 0; }
+  .sched .st { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  .sched.done .n { color: var(--sub); }
+  .empty-msg { color: var(--sub); font-size: 13px; padding: 16px 0; text-align: center; }
+  .placeholder { text-align: center; padding: 80px 20px; color: var(--sub); }
+  .placeholder div { font-size: 40px; margin-bottom: 12px; }
+  /* modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .modal-bg.open { display: flex; }
+  .modal { background: #fff; border-radius: 16px; width: min(460px, 92vw); padding: 24px; max-height: 90vh; overflow: auto; }
+  .modal h3 { margin: 0 0 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+  .field input, .field select, .row2 select, .row2 input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; }
+  .amount-input { font-size: 22px !important; font-weight: 700; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: #fff; padding: 10px; font-family: inherit; font-size: 14px; cursor: pointer; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { color: #fff; font-weight: 600; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tag-input { border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag-input input { border: 0 !important; flex: 1; min-width: 100px; padding: 4px !important; outline: none; }
+  .tag-input .tag { cursor: pointer; }
+  .suggest { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .suggest span { font-size: 12px; color: var(--sub); border: 1px dashed var(--line); padding: 2px 7px; border-radius: 5px; cursor: pointer; }
+  .hint { font-size: 12px; color: #7C3AED; margin-top: 6px; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, 1fr); } .grid, .cal-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .sidebar { display: none; } main { padding: 16px; } .hide-sm { display: none; } .day { min-height: 60px; padding: 4px; } .marks { display: none; } .day .amt { font-size: 10px; } }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo">Jipsa<span>.</span></div>
+  <nav class="nav" id="nav">
+    <a href="#dashboard" data-view="dashboard">📊 대시보드</a>
+    <a href="#calendar" data-view="calendar">📅 캘린더</a>
+    <a href="#transactions" data-view="transactions">🧾 거래 내역</a>
+    <div class="sep"></div>
+    <a href="#tags" data-view="tags">🏷️ 태그 관리</a>
+    <a href="#recurring" data-view="recurring">🔁 고정비·할부</a>
+    <a href="#settings" data-view="settings">⚙️ 설정</a>
+  </nav>
+  <a class="back" href="index.html">← 후보 목록</a>
+</aside>
+
+<main>
+  <header>
+    <div class="title-row">
+      <div class="month-nav">
+        <button class="icon-btn" id="prev">◀</button>
+        <div><h1 id="month"></h1><small id="asof"></small></div>
+        <button class="icon-btn" id="next">▶</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost">CSV 가져오기</button>
+      <button class="btn" id="open-add">+ 지출 추가</button>
+    </div>
+  </header>
+
+  <!-- ===== 대시보드 ===== -->
+  <section class="view" id="view-dashboard">
+    <div class="insight" id="insight"></div>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>월별 지출 추이 <small>종류별 누적 · 막대를 누르면 해당 월로 이동</small></h2>
+        <div class="chart-box"><canvas id="trend"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>카테고리 비중 <small id="cat-total"></small></h2>
+        <div class="chart-box"><canvas id="donut"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card mb">
+      <h2>카테고리 × 월 히트맵 <small>행 기준 정규화 · 진할수록 그 카테고리를 많이 쓴 달 · 행을 누르면 최근 내역 필터</small></h2>
+      <div class="heat-wrap"><table class="heat" id="heat"></table></div>
+      <div class="heat-legend">적음 <i style="background:rgba(var(--accent-rgb),.06)"></i><i style="background:rgba(var(--accent-rgb),.22)"></i><i style="background:rgba(var(--accent-rgb),.42)"></i><i style="background:rgba(var(--accent-rgb),.65)"></i> 많음</div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>태그 TOP 10 <small>클릭하면 최근 내역 필터 · 태그는 중복 집계</small></h2>
+        <div id="tags"></div>
+      </div>
+      <div class="card">
+        <h2>진행 중인 할부 <small id="ins-sum"></small></h2>
+        <div id="ins"></div>
+        <div class="forecast">
+          <h3>앞으로 6개월 약정 지출 전망</h3>
+          <div class="muted" style="font-size:12px">이미 약속된 고정비 + 남은 할부 회차</div>
+          <div class="chart-box" style="height:150px;margin-top:8px"><canvas id="forecast"></canvas></div>
+          <div class="note" id="forecast-note"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-head">
+        <h2 style="margin:0">최근 내역 <small id="recent-count" style="margin-left:6px"></small></h2>
+        <div class="chips"><span id="recent-filter" class="chips"></span><a class="btn ghost sm" href="#transactions" style="text-decoration:none">전체 보기 →</a></div>
+      </div>
+      <table class="tx"><thead><tr><th>날짜</th><th>사용처</th><th class="hide-sm">카테고리</th><th>종류</th><th class="hide-sm">태그</th><th class="amt">금액</th></tr></thead><tbody id="recent"></tbody></table>
+    </section>
+  </section>
+
+  <!-- ===== 캘린더 ===== -->
+  <section class="view" id="view-calendar">
+    <div class="cal-top">
+      <div><div class="muted">이번 달 지출</div><div style="font-size:24px;font-weight:800" id="cal-total"></div></div>
+      <div class="split"><div class="bar" id="split-bar"></div><div class="legend" id="split-legend"></div></div>
+    </div>
+    <div class="chips mb" id="cal-filters"></div>
+    <div class="cal-layout">
+      <div class="cal">
+        <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+        <div class="days" id="days"></div>
+        <div class="heat-legend">일반 지출 강도 <i style="background:rgba(var(--accent-rgb),.06)"></i><i style="background:rgba(var(--accent-rgb),.18)"></i><i style="background:rgba(var(--accent-rgb),.32)"></i><i style="background:rgba(var(--accent-rgb),.45)"></i> 많음 · <span class="mark fixed">고정</span> <span class="mark installment">할부</span> 결제일</div>
+      </div>
+      <div>
+        <div class="card side-panel">
+          <h2 id="day-title"></h2>
+          <div class="sub" id="day-sub"></div>
+          <div id="day-list"></div>
+          <button class="btn ghost sm" id="day-add" style="width:100%;margin-top:10px">+ 이 날짜에 지출 추가</button>
+        </div>
+        <div class="card side-panel">
+          <h2>이번 달 고정 지출 일정</h2>
+          <div class="sub" id="sched-sub"></div>
+          <div id="sched"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 거래 내역 ===== -->
+  <section class="view" id="view-transactions">
+    <section class="card">
+      <div class="toolbar">
+        <input id="q" placeholder="🔍 사용처·태그 검색">
+        <select id="f-cat-filter"></select>
+        <div class="chips" id="tx-kind"></div>
+        <span id="tx-tag"></span>
+      </div>
+      <div class="summary-line" id="tx-summary"></div>
+      <table class="tx">
+        <thead><tr><th>날짜</th><th>사용처</th><th class="hide-sm">카테고리</th><th>종류</th><th class="hide-sm">태그</th><th class="hide-sm">결제수단</th><th class="amt">금액</th></tr></thead>
+        <tbody id="tx-body"></tbody>
+      </table>
+      <div class="more" id="tx-more"></div>
+    </section>
+  </section>
+
+  <section class="view" id="view-placeholder"><div class="card placeholder"><div>🚧</div><b id="ph-title"></b><p>이 메뉴는 다음 단계에서 설계해요</p></div></section>
+</main>
+
+<!-- ===== 지출 추가 모달 ===== -->
+<div class="modal-bg" id="modal">
+  <form class="modal" id="add-form">
+    <h3>지출 추가</h3>
+    <div class="field"><label>금액</label><input class="amount-input" id="f-amount" inputmode="numeric" placeholder="0원" required></div>
+    <div class="field"><label>종류</label><div class="seg" id="f-kind"></div>
+      <div id="ins-fields" style="display:none;margin-top:10px" class="row2">
+        <select id="f-months"><option value="2">2개월</option><option value="3" selected>3개월</option><option value="6">6개월</option><option value="10">10개월</option><option value="12">12개월</option><option value="24">24개월</option></select>
+        <input id="f-monthly" disabled>
+      </div>
+      <div class="hint" id="kind-hint"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>날짜</label><input type="date" id="f-date" min="2026-06-01" max="2026-11-30"></div>
+      <div class="field"><label>카테고리</label><select id="f-cat"></select></div>
+    </div>
+    <div class="field"><label>사용처</label><input id="f-merchant" placeholder="예: 스타벅스" required></div>
+    <div class="field"><label>태그 (Enter로 추가)</label>
+      <div class="tag-input" id="tag-box"><input id="f-tag" placeholder="#태그"></div>
+      <div class="suggest" id="tag-suggest"></div>
+    </div>
+    <div class="actions"><button type="button" class="btn ghost" id="cancel">취소</button><button class="btn">저장</button></div>
+  </form>
+</div>
+
+<script>
+const L = LEDGER;
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, '0');
+const TODAY_D = Number(L.TODAY.slice(8));
+const CUR_M = L.TODAY.slice(0, 7);
+
+// ---------- 공유 상태 ----------
+const S = {
+  view: 'dashboard',
+  mi: L.MONTHS.length - 1,
+  dash: { cat: null, tag: null },               // 대시보드 최근 내역 필터
+  cal: { day: TODAY_D, filter: null },           // filter: {type:'kind'|'tag', value}
+  tx: { kind: 'all', tag: null, cat: '', q: '', showAll: false },
+};
+const charts = {};
+const month = () => L.MONTHS[S.mi];
+const newChart = (key, el, cfg) => { charts[key] && charts[key].destroy(); charts[key] = new Chart(el, cfg); };
+
+const kindBadge = (t) => { const kv = L.KINDS[t.kind]; return `<span class="badge" style="background:${kv.color}1f;color:${kv.color}">${kv.short}</span>`; };
+const tagsHtml = (t) => t.tags.map((g) => `<span class="tag">#${g}</span>`).join('');
+const insLabel = (t) => t.installment ? ` <span class="muted">(${t.installment.current}/${t.installment.total})</span>` : '';
+const pctHtml = (p) => p === null ? '<span class="muted">–</span>' : `<span class="${p > 0 ? 'up' : 'down'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%</span>`;
+
+// ---------- 라우터 ----------
+const VIEWS = { dashboard: '대시보드', calendar: '캘린더', transactions: '거래 내역', tags: '태그 관리', recurring: '고정비·할부', settings: '설정' };
+function route() {
+  const v = location.hash.slice(1);
+  S.view = VIEWS[v] ? v : 'dashboard';
+  document.querySelectorAll('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === S.view));
+  document.querySelectorAll('.view').forEach((el) => el.classList.remove('on'));
+  const real = ['dashboard', 'calendar', 'transactions'].includes(S.view);
+  $(real ? `view-${S.view}` : 'view-placeholder').classList.add('on');
+  if (!real) $('ph-title').textContent = VIEWS[S.view];
+  document.title = `${VIEWS[S.view]} · Jipsa 가계부`;
+  render();
+}
+window.addEventListener('hashchange', route);
+
+function render() {
+  const m = month();
+  $('month').textContent = L.monthLabel(m);
+  $('asof').textContent = m === CUR_M ? `${TODAY_D}일까지 집계` : '월 마감';
+  $('prev').disabled = S.mi === 0; $('next').disabled = S.mi === L.MONTHS.length - 1;
+  if (S.view === 'dashboard') renderDashboard();
+  else if (S.view === 'calendar') renderCalendar();
+  else if (S.view === 'transactions') renderTransactions();
+}
+function goMonth(i) {
+  S.mi = i;
+  S.cal.day = L.MONTHS[i] === CUR_M ? TODAY_D : 1;
+  S.tx.showAll = false;
+  render();
+}
+$('prev').onclick = () => S.mi > 0 && goMonth(S.mi - 1);
+$('next').onclick = () => S.mi < L.MONTHS.length - 1 && goMonth(S.mi + 1);
+
+// =====================================================
+// 대시보드
+// =====================================================
+function renderDashboard() {
+  const m = month(), list = L.inMonth(m);
+  const prevM = L.MONTHS[S.mi - 1], prev = prevM ? L.inMonth(prevM) : null;
+  const k = L.byKind(list), pk = prev ? L.byKind(prev) : {};
+  const total = L.sum(list), ptotal = prev ? L.sum(prev) : 0;
+
+  // 인사이트 한 줄
+  const past = L.MONTHS.slice(Math.max(0, S.mi - 3), S.mi);
+  const avg3 = past.length ? past.reduce((s, mm) => s + L.sum(L.inMonth(mm)), 0) / past.length : null;
+  const catNow = Object.fromEntries(L.groupSum(list, (t) => t.category));
+  const catPrev = Object.fromEntries(L.groupSum(prev || [], (t) => t.category));
+  const [topC, topCd] = Object.keys(catNow).map((c) => [c, catNow[c] - (catPrev[c] || 0)]).sort((a, b) => b[1] - a[1])[0] || [];
+  const committedPct = (k.fixed + k.installment) / total * 100;
+  if (avg3) {
+    const d = L.pct(total, avg3);
+    $('insight').innerHTML = `<span>💡</span><span>최근 3개월 평균보다 <b>${Math.abs(d).toFixed(0)}% ${d > 0 ? '더' : '덜'}</b> 썼어요. ` +
+      (topC && topCd > 0 ? `가장 크게 늘어난 건 <b>${L.CATEGORIES[topC].icon} ${topC} (+${L.man(topCd)})</b>이고, ` : '') +
+      `고정비·할부가 지출의 <b>${committedPct.toFixed(0)}%</b>를 차지해요.</span>`;
+  } else {
+    $('insight').innerHTML = `<span>💡</span><span>이번 달 고정비·할부가 지출의 <b>${committedPct.toFixed(0)}%</b>를 차지해요. (비교할 이전 달 데이터가 부족해요)</span>`;
+  }
+
+  // KPI
+  const kpi = (label, val, prevVal, color, ratio) => `
+    <div class="card kpi">
+      <div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${label}</div>
+      <div class="value">${L.won(val)}</div>
+      <div class="delta">${prev ? `지난달 대비 ${pctHtml(L.pct(val, prevVal))}` : '지난달 데이터 없음'}</div>
+      ${ratio !== undefined ? `<div class="bar"><i style="width:${ratio}%;background:${color}"></i></div>` : ''}
+    </div>`;
+  $('kpis').innerHTML = kpi('이번 달 총 지출', total, ptotal) +
+    Object.entries(L.KINDS).map(([key, v]) => kpi(`${v.label} · ${(k[key] / total * 100).toFixed(0)}%`, k[key], pk[key], v.color, k[key] / total * 100)).join('');
+
+  // 추이
+  newChart('trend', $('trend'), {
+    type: 'bar',
+    data: {
+      labels: L.MONTHS.map(L.shortMonth),
+      datasets: Object.entries(L.KINDS).map(([key, v]) => ({
+        label: v.label, data: L.MONTHS.map((mm) => L.byKind(L.inMonth(mm))[key]),
+        backgroundColor: L.MONTHS.map((_, i) => i === S.mi ? v.color : v.color + '55'), borderRadius: 4, maxBarThickness: 46,
+      })),
+    },
+    options: {
+      maintainAspectRatio: false,
+      onClick: (_, els) => { if (els.length) goMonth(els[0].index); },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${L.won(c.raw)}` } } },
+      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { callback: (v) => L.man(v) }, grid: { color: '#F1F5F9' } } },
+    },
+  });
+
+  // 도넛
+  const cats = L.groupSum(list, (t) => t.category);
+  $('cat-total').textContent = `${cats.length}개 카테고리`;
+  newChart('donut', $('donut'), {
+    type: 'doughnut',
+    data: { labels: cats.map(([c]) => `${L.CATEGORIES[c].icon} ${c}`), datasets: [{ data: cats.map(([, v]) => v), backgroundColor: cats.map(([c]) => L.CATEGORIES[c].color), borderWidth: 2 }] },
+    options: {
+      maintainAspectRatio: false, cutout: '62%',
+      onClick: (_, els) => { if (els.length) { const c = cats[els[0].index][0]; S.dash.cat = S.dash.cat === c ? null : c; renderDashboard(); } },
+      plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 12 } } }, tooltip: { callbacks: { label: (c) => ` ${L.won(c.raw)} (${(c.raw / total * 100).toFixed(1)}%)` } } },
+    },
+  });
+
+  // 히트맵
+  const rows = Object.keys(L.CATEGORIES)
+    .map((c) => ({ c, row: L.MONTHS.map((mm) => L.sum(L.inMonth(mm).filter((t) => t.category === c))) }))
+    .filter((r) => r.row.some((v) => v))
+    .sort((a, b) => b.row[S.mi] - a.row[S.mi]);
+  $('heat').innerHTML = `<tr><th></th>${L.MONTHS.map((mm, i) => `<th class="${i === S.mi ? 'cur' : ''}">${L.shortMonth(mm)}</th>`).join('')}<th style="text-align:right">전월 대비</th></tr>` +
+    rows.map(({ c, row }) => {
+      const max = Math.max(...row);
+      const d = S.mi > 0 && row[S.mi - 1] ? L.pct(row[S.mi], row[S.mi - 1]) : null;
+      return `<tr class="hrow ${S.dash.cat === c ? 'sel' : ''}" data-cat="${c}"><th class="row">${L.CATEGORIES[c].icon} ${c}</th>${row.map((v, i) => {
+        const a = max ? v / max : 0;
+        return `<td class="${i === S.mi ? 'cur' : ''}" title="${L.shortMonth(L.MONTHS[i])} ${c}: ${L.won(v)}" style="background:rgba(var(--accent-rgb),${v ? 0.06 + a * 0.6 : 0.02});color:${a > 0.62 ? '#fff' : 'var(--ink)'}">${v ? L.man(v) : '·'}</td>`;
+      }).join('')}<td class="delta">${d === null ? (row[S.mi] && S.mi > 0 ? '<span class="up">NEW</span>' : '<span class="muted">–</span>') : pctHtml(d)}</td></tr>`;
+    }).join('');
+  document.querySelectorAll('.hrow').forEach((tr) => tr.onclick = () => { S.dash.cat = S.dash.cat === tr.dataset.cat ? null : tr.dataset.cat; renderDashboard(); });
+
+  // 태그
+  const tags = L.groupSum(list, (t) => t.tags).slice(0, 10);
+  const maxT = tags[0] ? tags[0][1] : 1;
+  $('tags').innerHTML = tags.map(([t, v]) => `
+    <div class="tag-row ${S.dash.tag === t ? 'sel' : ''}" data-tag="${t}">
+      <span class="tname">#${t}</span><div class="track"><i style="width:${v / maxT * 100}%"></i></div><span class="amt">${L.won(v)}</span>
+    </div>`).join('');
+  document.querySelectorAll('.tag-row').forEach((el) => el.onclick = () => { S.dash.tag = S.dash.tag === el.dataset.tag ? null : el.dataset.tag; renderDashboard(); });
+
+  // 할부 + 전망
+  const ins = L.installmentStatus(m);
+  $('ins-sum').textContent = `월 ${L.won(ins.reduce((s, i) => s + i.monthly, 0))}`;
+  $('ins').innerHTML = ins.map((i) => `
+    <div class="ins">
+      <div class="top"><b>${L.CATEGORIES[i.category].icon} ${i.merchant}</b><span>${L.won(i.monthly)}/월</span></div>
+      <div class="meta"><span>${i.current}/${i.months}회차 · ${i.card}</span><span>남은 ${L.won(i.remainingAmount)} · ${L.shortMonth(i.endMonth)} 종료</span></div>
+      <div class="progress"><i style="width:${i.current / i.months * 100}%"></i></div>
+    </div>`).join('') || '<p class="muted">진행 중인 할부가 없어요</p>';
+  const fc = L.commitmentForecast(m, 6);
+  newChart('forecast', $('forecast'), {
+    type: 'bar',
+    data: { labels: fc.map((f) => L.shortMonth(f.month)), datasets: [
+      { label: '고정비', data: fc.map((f) => f.fixed), backgroundColor: L.KINDS.fixed.color, borderRadius: 3, maxBarThickness: 28 },
+      { label: '할부', data: fc.map((f) => f.installment), backgroundColor: L.KINDS.installment.color, borderRadius: 3, maxBarThickness: 28 },
+    ] },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label} ${L.won(c.raw)}`, afterBody: (items) => '할부: ' + (fc[items[0].dataIndex].plans.join(', ') || '없음') } } },
+      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { callback: (v) => L.man(v), maxTicksLimit: 4 }, grid: { color: '#F1F5F9' } } },
+    },
+  });
+  const ending = ins.filter((i) => i.remaining <= 3).map((i) => i.remaining === 0
+    ? `<b>${i.merchant}</b> 이번 달 마지막 회차 → 다음 달부터 월 -${L.man(i.monthly)}`
+    : `<b>${i.merchant}</b> ${i.remaining}회 남음 → ${L.shortMonth(i.endMonth)} 종료`);
+  $('forecast-note').innerHTML = ending.length ? ending.join('<br>') : '';
+
+  // 최근 내역
+  const f = S.dash;
+  const filtered = list.filter((t) => (!f.cat || t.category === f.cat) && (!f.tag || t.tags.includes(f.tag)));
+  $('recent-filter').innerHTML = (f.cat ? `<button class="chip tag-on" data-clear="cat">${L.CATEGORIES[f.cat].icon} ${f.cat} ✕</button>` : '') +
+    (f.tag ? `<button class="chip tag-on" data-clear="tag">#${f.tag} ✕</button>` : '');
+  document.querySelectorAll('[data-clear]').forEach((b) => b.onclick = () => { S.dash[b.dataset.clear] = null; renderDashboard(); });
+  $('recent-count').textContent = (f.cat || f.tag) ? `${filtered.length}건 · ${L.won(L.sum(filtered))}` : '최근 10건';
+  $('recent').innerHTML = filtered.slice(0, 10).map((t) => `<tr>
+      <td class="muted">${t.date.slice(5).replace('-', '.')}</td>
+      <td><b style="font-weight:600">${t.merchant}</b>${insLabel(t)}</td>
+      <td class="hide-sm">${L.CATEGORIES[t.category].icon} ${t.category}</td>
+      <td>${kindBadge(t)}</td><td class="hide-sm">${tagsHtml(t)}</td>
+      <td class="amt">-${L.fmt(t.amount)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-msg">내역이 없어요</td></tr>';
+}
+
+// =====================================================
+// 캘린더
+// =====================================================
+function calMatches(t) {
+  const f = S.cal.filter;
+  if (!f) return true;
+  return f.type === 'kind' ? t.kind === f.value : t.tags.includes(f.value);
+}
+function renderCalendar() {
+  const m = month(), list = L.inMonth(m), isCur = m === CUR_M;
+  const k = L.byKind(list), total = L.sum(list);
+  $('cal-total').textContent = L.won(total);
+  $('split-bar').innerHTML = Object.entries(L.KINDS).map(([kk, v]) => `<div style="width:${k[kk] / total * 100}%;background:${v.color}"></div>`).join('');
+  $('split-legend').innerHTML = Object.entries(L.KINDS).map(([kk, v]) => `<span><span class="dot" style="background:${v.color}"></span> ${v.label} <b>${L.man(k[kk])}</b> (${(k[kk] / total * 100).toFixed(0)}%)</span>`).join('');
+
+  // 필터
+  const f = S.cal.filter;
+  const topTags = L.groupSum(list, (t) => t.tags).slice(0, 10).map(([t]) => t);
+  $('cal-filters').innerHTML = `<span class="muted" style="margin-right:2px">하이라이트</span><button class="chip ${!f ? 'on' : ''}" data-f="">전체</button>` +
+    Object.entries(L.KINDS).map(([kk, v]) => `<button class="chip ${f && f.value === kk ? 'on' : ''}" data-f="kind:${kk}"><span class="dot" style="background:${v.color}"></span> ${v.label}</button>`).join('') +
+    `<span class="muted" style="margin:0 2px 0 10px">태그</span>` +
+    topTags.map((t) => `<button class="chip ${f && f.value === t ? 'on' : ''}" data-f="tag:${t}">#${t}</button>`).join('');
+  document.querySelectorAll('#cal-filters [data-f]').forEach((b) => b.onclick = () => {
+    const [type, value] = b.dataset.f.split(':');
+    S.cal.filter = b.dataset.f ? { type, value } : null; renderCalendar();
+  });
+
+  // 달력
+  const [y, mo] = m.split('-').map(Number);
+  const first = new Date(y, mo - 1, 1).getDay(), nd = L.daysIn(m);
+  const byDay = {};
+  list.forEach((t) => { const d = Number(t.date.slice(8)); (byDay[d] = byDay[d] || []).push(t); });
+  const genMax = Math.max(...Object.values(byDay).map((ts) => L.sum(ts.filter((t) => t.kind === 'general'))), 1);
+  let html = '<div class="day empty"></div>'.repeat(first);
+  for (let d = 1; d <= nd; d++) {
+    const ts = byDay[d] || [];
+    const shown = ts.filter(calMatches), daySum = L.sum(shown);
+    const gen = L.sum(ts.filter((t) => t.kind === 'general'));
+    const alpha = f ? (daySum ? 0.1 + 0.35 * Math.min(1, daySum / genMax) : 0) : (gen ? 0.05 + 0.4 * (gen / genMax) : 0);
+    const marks = ts.filter((t) => t.kind !== 'general').map((t) => t.kind === 'fixed'
+      ? `<span class="mark fixed">${t.merchant}</span>`
+      : `<span class="mark installment">${t.merchant.split(' ')[0]} ${t.installment.current}/${t.installment.total}</span>`).join('');
+    const kk = L.byKind(shown);
+    const kbar = daySum ? `<div class="kbar">${Object.entries(L.KINDS).map(([key, v]) => `<i style="width:${kk[key] / daySum * 100}%;background:${v.color}"></i>`).join('')}</div>` : '';
+    const cls = ['day', isCur && d > TODAY_D ? 'future' : '', isCur && d === TODAY_D ? 'today' : '', d === S.cal.day ? 'sel' : '', f && !daySum && ts.length ? 'dim' : ''].join(' ');
+    html += `<div class="${cls}" data-d="${d}" style="background:rgba(var(--accent-rgb),${alpha})">
+      <div class="num">${d}</div><div class="marks">${marks}</div>${daySum ? `<div class="amt">${L.fmt(daySum)}</div>${kbar}` : ''}</div>`;
+  }
+  html += '<div class="day empty"></div>'.repeat((7 - ((first + nd) % 7)) % 7);
+  $('days').innerHTML = html;
+  document.querySelectorAll('.day[data-d]').forEach((el) => {
+    el.onclick = () => { S.cal.day = Number(el.dataset.d); renderCalendar(); };
+  });
+
+  // 선택한 날
+  const day = Math.min(S.cal.day, nd);
+  const dts = byDay[day] || [];
+  $('day-title').textContent = `${mo}월 ${day}일 (${'일월화수목금토'[new Date(y, mo - 1, day).getDay()]})`;
+  $('day-sub').textContent = dts.length ? `${dts.length}건 · ${L.won(L.sum(dts))}` : '';
+  $('day-list').innerHTML = dts.length ? dts.map((t) => {
+    const c = L.CATEGORIES[t.category], kv = L.KINDS[t.kind];
+    return `<div class="txi" style="${calMatches(t) ? '' : 'opacity:.35'}">
+      <div class="ic" style="background:${c.color}1a">${c.icon}</div>
+      <div class="body"><div class="name">${t.merchant}</div><div class="meta">${t.category} · ${t.card} ${t.tags.map((g) => `<span style="color:#4338CA">#${g}</span>`).join(' ')}</div></div>
+      <div class="price">-${L.fmt(t.amount)}<small style="color:${kv.color}">${kv.short}${t.installment ? ` ${t.installment.current}/${t.installment.total}` : ''}</small></div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">이 날은 지출이 없어요 🎉</div>';
+  $('day-add').onclick = () => openAdd(`${m}-${pad(day)}`);
+
+  // 고정 지출 일정
+  const items = list.filter((t) => t.kind !== 'general').map((t) => ({ day: Number(t.date.slice(8)), merchant: t.merchant, amount: t.amount, kind: t.kind, done: true, ins: t.installment }));
+  if (isCur) L.FIXED.filter((fx) => fx.day > TODAY_D).forEach((fx) => items.push({ day: fx.day, merchant: fx.merchant, amount: Array.isArray(fx.amount) ? fx.amount[0] : fx.amount, kind: 'fixed', done: false }));
+  items.sort((a, b) => a.day - b.day);
+  const paid = items.filter((i) => i.done), todo = items.filter((i) => !i.done);
+  $('sched-sub').textContent = `결제 완료 ${L.won(L.sum(paid))}` + (todo.length ? ` · 예정 ${L.won(L.sum(todo))}` : '');
+  $('sched').innerHTML = items.map((i) => `
+    <div class="sched ${i.done ? 'done' : ''}"><span class="d">${mo}/${i.day}</span>
+      <span class="dot" style="background:${L.KINDS[i.kind].color}"></span>
+      <span class="n">${i.merchant}${i.ins ? ` (${i.ins.current}/${i.ins.total})` : ''}</span>
+      <span style="font-variant-numeric:tabular-nums">${L.fmt(i.amount)}</span>
+      <span class="st" style="background:${i.done ? '#F3F4F6' : '#FEF3C7'};color:${i.done ? '#6B7280' : '#B45309'}">${i.done ? '완료' : '예정'}</span></div>`).join('');
+}
+
+// =====================================================
+// 거래 내역
+// =====================================================
+$('f-cat-filter').innerHTML = '<option value="">전체 카테고리</option>' + Object.entries(L.CATEGORIES).map(([c, v]) => `<option value="${c}">${v.icon} ${c}</option>`).join('');
+$('f-cat-filter').onchange = (e) => { S.tx.cat = e.target.value; S.tx.showAll = false; renderTransactions(); };
+$('q').oninput = (e) => { S.tx.q = e.target.value.trim(); S.tx.showAll = false; renderTransactions(); };
+function renderTransactions() {
+  const T = S.tx, list = L.inMonth(month());
+  $('f-cat-filter').value = T.cat;
+  $('tx-kind').innerHTML = [['all', '전체'], ...Object.entries(L.KINDS).map(([kk, v]) => [kk, v.label])]
+    .map(([kk, lab]) => `<button class="chip ${T.kind === kk ? 'on' : ''}" data-kind="${kk}">${lab}</button>`).join('');
+  document.querySelectorAll('#tx-kind [data-kind]').forEach((b) => b.onclick = () => { T.kind = b.dataset.kind; T.showAll = false; renderTransactions(); });
+  $('tx-tag').innerHTML = T.tag ? `<button class="chip tag-on" id="tx-tag-clear">#${T.tag} ✕</button>` : '';
+  if (T.tag) $('tx-tag-clear').onclick = () => { T.tag = null; renderTransactions(); };
+
+  const q = T.q.replace(/^#/, '').toLowerCase();
+  const rows = list.filter((t) => (T.kind === 'all' || t.kind === T.kind) && (!T.cat || t.category === T.cat) && (!T.tag || t.tags.includes(T.tag)) &&
+    (!q || t.merchant.toLowerCase().includes(q) || t.tags.some((g) => g.toLowerCase().includes(q))));
+  const k = L.byKind(rows);
+  $('tx-summary').innerHTML = `<span><b>${rows.length}건</b> · 합계 <b>${L.won(L.sum(rows))}</b></span>` +
+    Object.entries(L.KINDS).map(([kk, v]) => `<span><span class="dot" style="background:${v.color}"></span> ${v.short} ${L.won(k[kk])}</span>`).join('');
+  const shown = T.showAll ? rows : rows.slice(0, 30);
+  $('tx-body').innerHTML = shown.map((t) => `<tr>
+      <td class="muted">${t.date.slice(5).replace('-', '.')}</td>
+      <td><b style="font-weight:600">${t.merchant}</b>${insLabel(t)}</td>
+      <td class="hide-sm">${L.CATEGORIES[t.category].icon} ${t.category}</td>
+      <td>${kindBadge(t)}</td>
+      <td class="hide-sm">${t.tags.map((g) => `<span class="tag" data-tag="${g}" style="cursor:pointer">#${g}</span>`).join('')}</td>
+      <td class="hide-sm muted">${t.card}</td>
+      <td class="amt">-${L.fmt(t.amount)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-msg">조건에 맞는 내역이 없어요</td></tr>';
+  document.querySelectorAll('#tx-body [data-tag]').forEach((el) => el.onclick = () => { T.tag = el.dataset.tag; renderTransactions(); });
+  $('tx-more').innerHTML = rows.length > 30 ? `<button class="chip" id="tx-toggle">${T.showAll ? '접기' : `${rows.length - 30}건 더 보기`}</button>` : '';
+  if (rows.length > 30) $('tx-toggle').onclick = () => { T.showAll = !T.showAll; renderTransactions(); };
+}
+
+// =====================================================
+// 지출 추가 모달 (모든 화면 공통)
+// =====================================================
+let fKind = 'general', fTags = [];
+$('f-cat').innerHTML = Object.keys(L.CATEGORIES).map((c) => `<option>${c}</option>`).join('');
+function renderForm() {
+  $('f-kind').innerHTML = Object.entries(L.KINDS).map(([k, v]) => `<button type="button" data-k="${k}" class="${fKind === k ? 'on' : ''}" style="${fKind === k ? `background:${v.color}` : ''}">${v.label}</button>`).join('');
+  $('f-kind').querySelectorAll('button').forEach((b) => b.onclick = () => { fKind = b.dataset.k; renderForm(); });
+  $('ins-fields').style.display = fKind === 'installment' ? 'grid' : 'none';
+  const amt = Number($('f-amount').value.replace(/\D/g, '')) || 0;
+  $('f-monthly').value = `월 ${L.won(Math.round(amt / Number($('f-months').value) / 10) * 10)}`;
+  $('kind-hint').textContent = fKind === 'fixed' ? '매월 같은 날짜에 자동으로 반복 등록돼요' : fKind === 'installment' ? '총 결제금액을 입력하면 회차별로 나눠 매월 기록돼요' : '';
+  const box = $('tag-box');
+  box.querySelectorAll('.tag').forEach((e) => e.remove());
+  fTags.forEach((t) => { const s = document.createElement('span'); s.className = 'tag'; s.textContent = `#${t} ✕`; s.onclick = () => { fTags = fTags.filter((x) => x !== t); renderForm(); }; box.insertBefore(s, $('f-tag')); });
+  $('tag-suggest').innerHTML = L.allTags().filter((t) => !fTags.includes(t)).slice(0, 12).map((t) => `<span data-t="${t}">#${t}</span>`).join('');
+  $('tag-suggest').querySelectorAll('span').forEach((s) => s.onclick = () => { fTags.push(s.dataset.t); renderForm(); });
+}
+function openAdd(date) {
+  $('add-form').reset(); fTags = []; fKind = 'general';
+  $('f-date').value = date || (month() === CUR_M ? L.TODAY : `${month()}-01`);
+  $('modal').classList.add('open'); renderForm(); $('f-amount').focus();
+}
+const closeAdd = () => $('modal').classList.remove('open');
+$('f-amount').oninput = (e) => { const n = e.target.value.replace(/\D/g, ''); e.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; renderForm(); };
+$('f-months').onchange = renderForm;
+$('f-tag').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value.replace(/^#/, '').trim(); if (v && !fTags.includes(v)) fTags.push(v); e.target.value = ''; renderForm(); } };
+$('open-add').onclick = () => openAdd(S.view === 'calendar' ? `${month()}-${pad(S.cal.day)}` : null);
+$('cancel').onclick = closeAdd;
+$('modal').onclick = (e) => { if (e.target.id === 'modal') closeAdd(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAdd(); });
+$('add-form').onsubmit = (e) => {
+  e.preventDefault();
+  const amount = Number($('f-amount').value.replace(/\D/g, ''));
+  const months = Number($('f-months').value);
+  const date = $('f-date').value;
+  L.TX.unshift({
+    id: 'new' + Date.now(), date, merchant: $('f-merchant').value, kind: fKind, category: $('f-cat').value, tags: [...fTags], card: '신한카드',
+    amount: fKind === 'installment' ? Math.round(amount / months / 10) * 10 : amount,
+    installment: fKind === 'installment' ? { current: 1, total: months, principal: amount } : undefined,
+  });
+  L.TX.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  closeAdd();
+  const idx = L.MONTHS.indexOf(date.slice(0, 7));
+  if (idx >= 0) { S.mi = idx; S.cal.day = Number(date.slice(8)); }
+  render();
+};
+
+route();
+</script>
+</body>
+</html>

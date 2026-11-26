@@ -1,0 +1,48 @@
+# 프로필과 무관한 공통 설정.
+#
+# 환경별로 달라지는 값은 application-dev.yml / application-prod.yml 에 둔다.
+# 프로필을 지정하지 않으면 dev(로컬)로 동작한다. 배포는 SPRING_PROFILES_ACTIVE=prod 로
+# 명시해야 하며, 이 방향이 안전하다.
+spring:
+  application:
+    name: jipsa
+
+  profiles:
+    default: dev
+
+  datasource:
+    # 접속 정보의 기본값 정책은 프로필이 정한다 (jipsa.db.*).
+    # URL 은 한 곳에만 두어 접속 옵션(타임존·인코딩)이 환경별로 어긋나지 않게 한다.
+    url: jdbc:mysql://${jipsa.db.host}:${jipsa.db.port}/${jipsa.db.name}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${jipsa.db.user}
+    password: ${jipsa.db.password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 10000
+
+  jpa:
+    # 스키마는 Flyway 로만 관리한다. Hibernate 는 검증만 수행한다.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
+
+  flyway:
+    enabled: true
+    # 스키마(db/migration)와 시드 데이터(db/seed)를 분리한다. 시드 적용 여부는 프로필이 정한다.
+    locations: classpath:db/migration
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

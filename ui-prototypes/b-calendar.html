@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>후보 B · 캘린더형</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="data.js"></script>
+<style>
+  :root { --bg: #FAFAF7; --panel: #fff; --ink: #1C1917; --sub: #78716C; --line: #E7E5E4; --heat: 16, 185, 129; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Pretendard, -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--line); background: #fff; gap: 16px; flex-wrap: wrap; }
+  .brand { font-weight: 800; font-size: 18px; }
+  .brand a { font-weight: 400; font-size: 12px; color: var(--sub); margin-left: 10px; }
+  .tabs { display: flex; gap: 4px; background: #F5F5F4; padding: 4px; border-radius: 10px; }
+  .tabs span { padding: 6px 14px; border-radius: 7px; font-size: 13px; color: var(--sub); }
+  .tabs span.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 28px 60px; }
+  .summary { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; flex-wrap: wrap; }
+  .month-nav { display: flex; align-items: center; gap: 10px; }
+  .month-nav h1 { margin: 0; font-size: 26px; }
+  .month-nav button { border: 1px solid var(--line); background: #fff; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+  .month-nav button:disabled { opacity: .3; }
+  .total { font-size: 14px; color: var(--sub); margin-top: 6px; }
+  .total b { font-size: 22px; color: var(--ink); margin-left: 6px; }
+  .split { flex: 1; min-width: 300px; max-width: 520px; }
+  .split .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
+  .split .legend { display: flex; gap: 14px; font-size: 12px; color: var(--sub); margin-top: 8px; flex-wrap: wrap; }
+  .split .legend b { color: var(--ink); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filters .lbl { font-size: 12px; color: var(--sub); margin-right: 4px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 11px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+  .cal { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .dow, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .dow div { font-size: 12px; color: var(--sub); padding: 10px; text-align: center; border-bottom: 1px solid var(--line); }
+  .dow div:first-child { color: #DC2626; } .dow div:last-child { color: #2563EB; }
+  .day { min-height: 104px; border-right: 1px solid #F5F5F4; border-bottom: 1px solid #F5F5F4; padding: 8px; cursor: pointer; position: relative; transition: outline .1s; display: flex; flex-direction: column; }
+  .day:nth-child(7n) { border-right: 0; }
+  .day.empty { background: #FAFAF9; cursor: default; }
+  .day.future { color: #D6D3D1; }
+  .day:hover:not(.empty) { outline: 2px solid #A8A29E; outline-offset: -2px; z-index: 1; }
+  .day.sel { outline: 2px solid var(--ink); outline-offset: -2px; z-index: 2; }
+  .day.today .num { background: var(--ink); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+  .day.dim { opacity: .25; }
+  .num { font-size: 12px; font-weight: 600; }
+  .amt { margin-top: auto; font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .marks { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+  .mark { font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kbar { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .heat-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--sub); justify-content: flex-end; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .heat-legend i { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .panel h2 { margin: 0 0 4px; font-size: 16px; }
+  .panel .sub { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+  .tx { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #F5F5F4; }
+  .tx:last-child { border-bottom: 0; }
+  .tx .ic { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .tx .body { flex: 1; min-width: 0; }
+  .tx .name { font-size: 14px; font-weight: 600; }
+  .tx .meta { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .tx .meta .t { color: #0F766E; }
+  .tx .price { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+  .tx .price small { display: block; font-size: 10px; font-weight: 600; }
+  .quick { display: flex; gap: 6px; margin-top: 12px; }
+  .quick input { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-family: inherit; font-size: 13px; min-width: 0; }
+  .quick button { border: 0; background: var(--ink); color: #fff; border-radius: 8px; padding: 0 14px; font-family: inherit; cursor: pointer; }
+  .quick-help { font-size: 11px; color: var(--sub); margin-top: 6px; }
+  .sched { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 7px 0; }
+  .sched .d { width: 34px; color: var(--sub); font-size: 12px; }
+  .sched .n { flex: 1; }
+  .sched .st { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  .sched.done .n { color: var(--sub); text-decoration: line-through; }
+  .empty-msg { color: var(--sub); font-size: 13px; padding: 16px 0; text-align: center; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .wrap { padding: 16px; } .day { min-height: 64px; padding: 4px; } .marks { display: none; } .amt { font-size: 10px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Jipsa 가계부 <a href="index.html">← 후보 목록</a></div>
+  <div class="tabs"><span class="on">캘린더</span><span>목록</span><span>분석</span><span>설정</span></div>
+</div>
+
+<div class="wrap">
+  <div class="summary">
+    <div>
+      <div class="month-nav"><button id="prev">‹</button><h1 id="month"></h1><button id="next">›</button></div>
+      <div class="total">이번 달 지출<b id="total"></b></div>
+    </div>
+    <div class="split"><div class="bar" id="split-bar"></div><div class="legend" id="split-legend"></div></div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+
+  <div class="layout">
+    <div>
+      <div class="cal">
+        <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+        <div class="days" id="days"></div>
+        <div class="heat-legend">일반 지출 강도 <i style="background:rgba(var(--heat),.06)"></i><i style="background:rgba(var(--heat),.2)"></i><i style="background:rgba(var(--heat),.38)"></i><i style="background:rgba(var(--heat),.55)"></i> 많음 · <span class="mark" style="background:#FEF3C7;color:#B45309">고정</span> <span class="mark" style="background:#EDE9FE;color:#6D28D9">할부</span> 결제일 표시</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2 id="day-title"></h2>
+        <div class="sub" id="day-sub"></div>
+        <div id="day-list"></div>
+        <form class="quick" id="quick"><input id="quick-in" placeholder="점심 김밥천국 9000 #점심"><button>추가</button></form>
+        <div class="quick-help">자연어 빠른 입력: <b>사용처 금액 #태그</b> · "할부3" / "고정" 키워드로 종류 지정</div>
+      </div>
+      <div class="panel">
+        <h2>이번 달 고정 지출 일정</h2>
+        <div class="sub" id="sched-sub"></div>
+        <div id="sched"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const L = LEDGER;
+const $ = (id) => document.getElementById(id);
+let mi = L.MONTHS.length - 1, selDay = Number(L.TODAY.slice(8)), filter = null; // filter: {type:'kind'|'tag', value}
+const pad = (n) => String(n).padStart(2, '0');
+
+function matches(t) {
+  if (!filter) return true;
+  return filter.type === 'kind' ? t.kind === filter.value : t.tags.includes(filter.value);
+}
+
+function render() {
+  const m = L.MONTHS[mi];
+  const list = L.inMonth(m);
+  const isCur = m === L.TODAY.slice(0, 7);
+  const k = L.byKind(list), total = L.sum(list);
+  $('month').textContent = L.monthLabel(m);
+  $('prev').disabled = mi === 0; $('next').disabled = mi === L.MONTHS.length - 1;
+  $('total').textContent = L.won(total);
+  $('split-bar').innerHTML = Object.entries(L.KINDS).map(([kk, v]) => `<div style="width:${k[kk] / total * 100}%;background:${v.color}" title="${v.label}"></div>`).join('');
+  $('split-legend').innerHTML = Object.entries(L.KINDS).map(([kk, v]) => `<span><span class="dot" style="background:${v.color}"></span>${v.label} <b>${L.man(k[kk])}</b> (${(k[kk] / total * 100).toFixed(0)}%)</span>`).join('');
+
+  // filters
+  const topTags = L.groupSum(list, (t) => t.tags).slice(0, 10).map(([t]) => t);
+  $('filters').innerHTML = `<span class="lbl">하이라이트</span><button class="chip ${!filter ? 'on' : ''}" data-f="">전체</button>` +
+    Object.entries(L.KINDS).map(([kk, v]) => `<button class="chip ${filter && filter.value === kk ? 'on' : ''}" data-f="kind:${kk}"><span class="dot" style="background:${v.color}"></span>${v.label}</button>`).join('') +
+    `<span class="lbl" style="margin-left:10px">태그</span>` +
+    topTags.map((t) => `<button class="chip ${filter && filter.value === t ? 'on' : ''}" data-f="tag:${t}">#${t}</button>`).join('');
+  document.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => {
+    const [type, value] = b.dataset.f.split(':');
+    filter = b.dataset.f ? { type, value } : null; render();
+  });
+
+  // calendar
+  const [y, mo] = m.split('-').map(Number);
+  const first = new Date(y, mo - 1, 1).getDay();
+  const nd = L.daysIn(m);
+  const byDay = {};
+  list.forEach((t) => { const d = Number(t.date.slice(8)); (byDay[d] = byDay[d] || []).push(t); });
+  const generalMax = Math.max(...Object.values(byDay).map((ts) => L.sum(ts.filter((t) => t.kind === 'general'))), 1);
+  let html = '';
+  for (let i = 0; i < first; i++) html += '<div class="day empty"></div>';
+  for (let d = 1; d <= nd; d++) {
+    const ts = byDay[d] || [];
+    const future = isCur && d > Number(L.TODAY.slice(8));
+    const shownTs = ts.filter(matches);
+    const daySum = L.sum(shownTs);
+    const gen = L.sum(ts.filter((t) => t.kind === 'general'));
+    const alpha = filter ? (daySum ? 0.12 + 0.4 * Math.min(1, daySum / generalMax) : 0) : (gen ? 0.06 + 0.5 * (gen / generalMax) : 0);
+    const marks = ts.filter((t) => t.kind !== 'general').map((t) => t.kind === 'fixed'
+      ? `<span class="mark" style="background:#FEF3C7;color:#B45309">${t.merchant}</span>`
+      : `<span class="mark" style="background:#EDE9FE;color:#6D28D9">${t.merchant.split(' ')[0]} ${t.installment.current}/${t.installment.total}</span>`).join('');
+    const kk = L.byKind(shownTs);
+    const kbar = daySum ? `<div class="kbar">${Object.entries(L.KINDS).map(([key, v]) => `<i style="width:${kk[key] / daySum * 100}%;background:${v.color}"></i>`).join('')}</div>` : '';
+    const cls = ['day', future ? 'future' : '', isCur && d === Number(L.TODAY.slice(8)) ? 'today' : '', d === selDay ? 'sel' : '', filter && !daySum && ts.length ? 'dim' : ''].join(' ');
+    html += `<div class="${cls}" data-d="${d}" style="background:rgba(var(--heat),${alpha})">
+      <div class="num">${d}</div><div class="marks">${marks}</div>
+      ${daySum ? `<div class="amt">${L.fmt(daySum)}</div>${kbar}` : ''}</div>`;
+  }
+  const trailing = (7 - ((first + nd) % 7)) % 7;
+  for (let i = 0; i < trailing; i++) html += '<div class="day empty"></div>';
+  $('days').innerHTML = html;
+  document.querySelectorAll('.day[data-d]').forEach((el) => el.onclick = () => { selDay = Number(el.dataset.d); render(); });
+
+  // day panel
+  const dts = (byDay[selDay] || []);
+  const dow = '일월화수목금토'[new Date(y, mo - 1, selDay).getDay()];
+  $('day-title').textContent = `${mo}월 ${selDay}일 (${dow})`;
+  $('day-sub').textContent = dts.length ? `${dts.length}건 · ${L.won(L.sum(dts))}` : '';
+  $('day-list').innerHTML = dts.length ? dts.map((t) => {
+    const c = L.CATEGORIES[t.category], kv = L.KINDS[t.kind];
+    return `<div class="tx" style="${matches(t) ? '' : 'opacity:.35'}">
+      <div class="ic" style="background:${c.color}1a">${c.icon}</div>
+      <div class="body"><div class="name">${t.merchant}</div>
+        <div class="meta">${t.category} · ${t.card} ${t.tags.map((g) => `<span class="t">#${g}</span>`).join(' ')}</div></div>
+      <div class="price">-${L.fmt(t.amount)}<small style="color:${kv.color}">${kv.short}${t.installment ? ` ${t.installment.current}/${t.installment.total}` : ''}</small></div>
+    </div>`;
+  }).join('') : '<div class="empty-msg">이 날은 지출이 없어요 🎉</div>';
+
+  // schedule
+  const recurring = list.filter((t) => t.kind !== 'general').sort((a, b) => a.date.localeCompare(b.date));
+  const planned = [];
+  if (isCur) {
+    const today = Number(L.TODAY.slice(8));
+    L.FIXED.filter((f) => f.day > today).forEach((f) => planned.push({ day: f.day, merchant: f.merchant, amount: Array.isArray(f.amount) ? f.amount[0] : f.amount, kind: 'fixed' }));
+  }
+  const items = [...recurring.map((t) => ({ day: Number(t.date.slice(8)), merchant: t.merchant, amount: t.amount, kind: t.kind, done: true, ins: t.installment })), ...planned];
+  const paid = items.filter((i) => i.done), todo = items.filter((i) => !i.done);
+  $('sched-sub').textContent = `결제 완료 ${L.won(L.sum(paid))}` + (todo.length ? ` · 예정 ${L.won(L.sum(todo))}` : '');
+  $('sched').innerHTML = items.sort((a, b) => a.day - b.day).map((i) => `
+    <div class="sched ${i.done ? 'done' : ''}"><span class="d">${mo}/${i.day}</span>
+      <span class="dot" style="background:${L.KINDS[i.kind].color}"></span>
+      <span class="n">${i.merchant}${i.ins ? ` (${i.ins.current}/${i.ins.total})` : ''}</span>
+      <span>${L.fmt(i.amount)}</span>
+      <span class="st" style="background:${i.done ? '#F5F5F4' : '#FEF3C7'};color:${i.done ? '#78716C' : '#B45309'}">${i.done ? '완료' : '예정'}</span></div>`).join('');
+}
+
+$('prev').onclick = () => { mi--; selDay = 1; render(); };
+$('next').onclick = () => { mi++; selDay = 1; render(); };
+$('quick').onsubmit = (e) => {
+  e.preventDefault();
+  const raw = $('quick-in').value.trim(); if (!raw) return;
+  const tags = (raw.match(/#\S+/g) || []).map((t) => t.slice(1));
+  const amount = Number((raw.match(/\d[\d,]*/) || ['0'])[0].replace(/,/g, ''));
+  const insM = raw.match(/할부\s?(\d+)/);
+  const kind = insM ? 'installment' : /고정/.test(raw) ? 'fixed' : 'general';
+  const merchant = raw.replace(/#\S+/g, '').replace(/할부\s?\d+|고정/g, '').replace(/\d[\d,]*원?/, '').trim() || '기타';
+  const months = insM ? Number(insM[1]) : 1;
+  L.TX.unshift({ id: 'q' + Date.now(), date: `${L.MONTHS[mi]}-${pad(selDay)}`, merchant, kind, category: '생활', tags, card: '신한카드',
+    amount: Math.round(amount / months), installment: insM ? { current: 1, total: months } : undefined });
+  $('quick-in').value = ''; render();
+};
+render();
+</script>
+</body>
+</html>

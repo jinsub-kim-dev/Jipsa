@@ -1,0 +1,94 @@
+# 환경 공통 구성.
+#
+# 이 파일 하나로는 호스트에 포트를 노출하지 않는다. 환경별 파일이 노출을 정한다.
+#
+#   로컬(dev):  docker compose up -d --build
+#               -> docker-compose.override.yml 이 자동으로 함께 적용된다
+#   배포(prod): docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Compose 는 리스트 필드(ports 등)를 덮어쓰지 않고 **병합**한다. 그래서 공통 파일에
+# 포트를 두면 배포 파일에서 되돌릴 수 없다. 노출은 환경별 파일에서만 선언한다.
+name: jipsa
+
+# 로그를 제한하지 않으면 디스크가 조용히 가득 찬다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: jipsa-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-jipsa}
+      MYSQL_USER: ${DB_USER:-jipsa}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-jipsapassword}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+09:00
+    volumes:
+      # Docker Volume 으로 데이터 영속성 확보 (컨테이너 재생성에도 데이터 유지)
+      - jipsa-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    logging: *default-logging
+
+  backend:
+    image: jipsa-backend:${TAG:-latest}
+    build:
+      context: ./backend
+    container_name: jipsa-backend
+    environment:
+      # 스프링 프로필은 환경별 파일이 지정한다. 지정하지 않으면 애플리케이션이
+      # dev 로 뜬다 (application.yml 의 spring.profiles.default).
+      DB_HOST: ${DB_HOST:-mysql}
+      # 같은 호스트의 컨테이너로 붙으므로 컨테이너 안쪽 포트다.
+      DB_PORT: ${DB_PORT_TARGET:-3306}
+      DB_NAME: ${DB_NAME:-jipsa}
+      DB_USER: ${DB_USER:-jipsa}
+      DB_PASSWORD: ${DB_PASSWORD:-jipsapassword}
+      # 컨테이너 안쪽 포트는 프로필과 무관하게 8080 이다. nginx 와 헬스체크가 이 포트를 본다.
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging: *default-logging
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    image: jipsa-frontend:${TAG:-latest}
+    build:
+      context: ./frontend
+      args:
+        # 빌드 모드는 환경별 파일이 지정한다. Dockerfile 기본값은 production 이다.
+        BUILD_MODE: ${FRONTEND_BUILD_MODE:-production}
+    container_name: jipsa-frontend
+    environment:
+      TZ: Asia/Seoul
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *default-logging
+    depends_on:
+      - backend
+
+volumes:
+  jipsa-mysql-data:
